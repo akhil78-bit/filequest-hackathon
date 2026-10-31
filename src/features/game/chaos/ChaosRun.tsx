@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+﻿import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 import { ZipWorkspace } from '../../../components/ZipWorkspace';
 import type { Organizer } from '../../../components/ZipWorkspace';
@@ -8,6 +8,7 @@ import type { RunMode } from './model';
 import { WorkScheduler } from './work-scheduler';
 import { RunnerCanvas } from './RunnerCanvas';
 import { createChaosDemo } from './demo';
+import { Icon } from '../../../components/Icon';
 import './chaos.css';
 
 const InventoryControls = memo(ZipWorkspace);
@@ -25,6 +26,7 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
   const arena = useRef<HTMLElement>(null);
   const panel = useRef<HTMLElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const uploadInput = useRef<HTMLInputElement>(null);
   const previousJob = useRef(organizer.jobId);
   const demoRequested = useRef(false);
   const swipe = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -117,55 +119,69 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
   };
   const incoming = game.entities.filter((entity) => !entity.resolved && entity.z > .15 && entity.z < .86).sort((a, b) => b.z - a.z).slice(0, 3);
   const score = Math.floor(game.score);
+  const uploadLocked = active || ['reading', 'packaging', 'cancelling'].includes(organizer.phase) || organizer.batchBusy;
+  const totalFiles = progress ? progress.total - progress.skipped : 0;
+  const percent = totalFiles ? Math.floor((progress!.processed / totalFiles) * 100) : 0;
+  const completed = organizer.phase === 'complete' && Boolean(organizer.downloadUrl);
+  const categoryCounts = CATEGORIES.map((category) => ({ category, count: organizer.manifest?.entries.filter((entry) => entry.category === category && entry.status === 'processed').length ?? 0 }));
 
-  return <div className="chaos-layout">
-    <section ref={panel} className="chaos-game" aria-labelledby="chaos-title" onKeyDown={keyboard}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) pause(); }}>
-      <div className="chaos-heading"><div><p className="eyebrow">ARCADE WITH AN ACTUAL PAYOFF</p><h2 id="chaos-title">CHAOS <span>RUN</span><sup>↗</sup></h2></div><span className="chaos-badge">{bonus.current ? 'BONUS RUN / ZIP COMPLETE' : game.mode === 'calm' && game.phase !== 'tutorial' ? 'CALM / YOU SET THE PACE' : 'DODGE · COLLECT · ORGANIZE'}</span></div>
-      <div className="chaos-hud" aria-label="Run statistics">
-        <div><span>Run score</span><strong>{score.toLocaleString().padStart(5, '0')}</strong></div>
-        <div><span>Hull integrity</span><strong className="health-pips" role="img" aria-label={`${game.health} of 3 health`}>{'◆'.repeat(game.health)}<i aria-hidden="true">{'◇'.repeat(3 - game.health)}</i></strong></div>
-        <div><span>Speed</span><strong>{game.speed.toFixed(1)}<small>×</small></strong></div>
-        <div><span>Combo</span><strong className="lime">×{multiplier(game.combo)}</strong></div>
+  return <>
+    <section className="intro" aria-labelledby="page-title">
+      <div className="intro-main"><p className="eyebrow"><span className="eyebrow-line" /> A LITTLE PLAY. A LOT LESS CLUTTER.</p><h1 id="page-title">Turn file chaos<br />into <span>your next high score.</span></h1><p className="intro-copy">Play through a messy ZIP. Download a clean, organized copy.</p>
+        <div className="intro-actions"><button className="primary-button" disabled={uploadLocked} onClick={() => uploadInput.current?.click()}><Icon name="upload" size={19} /> Upload your ZIP</button><button className="secondary-button demo-button" disabled={uploadLocked} onClick={demo}><Icon name="play" size={17} /> Try instant demo <span>120 files</span></button></div><p className="intro-note">{uploadLocked ? 'Finish or cancel this quest before choosing a new archive.' : 'No account. No setup. Your files never leave this device.'}</p>
       </div>
-      <section ref={arena} className={`chaos-stage ${reduced ? 'reduced-effects' : ''}`} tabIndex={0} aria-label="Chaos Run game arena" aria-describedby="chaos-keys chaos-track"
-        onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { swipe.current = null; }}>
-        <RunnerCanvas engine={engine} reduced={reduced} />
-        <div className="track-labels" aria-hidden="true"><span>SECTOR {String(game.waves + 1).padStart(2, '0')}</span><span>{Math.floor(game.distance)} M</span></div>
-        {!overlay && <div className="power-hud"><span>{game.shield > 0 ? `S SHIELD ${Math.ceil(game.shield / 1000)}s` : 'S SHIELD OFFLINE'}</span><span>{game.magnet > 0 ? `M MAGNET ${Math.ceil(game.magnet / 1000)}s` : 'M MAGNET OFFLINE'}</span></div>}
-        {overlay && <div className="chaos-overlay"><div ref={dialog} className="chaos-dialog" role="group" tabIndex={-1} aria-label={`Run state: ${game.phase}`}>
-          {game.phase === 'tutorial' && <><span className="dialog-mark" aria-hidden="true">↯</span><p className="eyebrow">OUTRUN THE CLUTTER</p><h3>Play fast.<br /><em>Leave organized.</em></h3><p>Pilot the neon stream. Dodge crates, collect energy and unlock real file-sorting batches as you go.</p>
-            <div className="chaos-mode" role="group" aria-label="Game mode"><button aria-pressed={mode === 'rush'} onClick={() => setMode('rush')}>Chaos mode<small>Endless runner · 3 health</small></button><button aria-pressed={mode === 'calm'} onClick={() => setMode('calm')}>Calm mode<small>No timer · advance by choice</small></button></div>
-            <button className="primary-button" disabled={organizer.phase === 'reading' || organizer.batchBusy} onClick={() => canPlay ? start() : demo()}>{organizer.phase === 'reading' ? 'Preparing your inventory…' : canPlay ? remaining === 0 ? 'Finalize empty inventory' : `Run with ${remaining} files ↗` : 'Play instant demo ↗'}</button>
-            <small>120 real synthetic files. No upload needed.<br />← → / A D or swipe to steer. Lime diamonds earn batches.</small>
-          </>}
-          {game.phase === 'paused' && <><span className="dialog-mark" aria-hidden="true">Ⅱ</span><h3>Hold your lane.</h3><p>The runner is paused. Already-earned work may finish; no new gameplay batches start until you resume.</p><button className="primary-button" onClick={resume}>Resume run</button><button className="text-button" onClick={() => { setMode('calm'); start('calm'); }}>Restart in calm mode · keep file progress</button></>}
-          {game.phase === 'gameover' && <><span className="dialog-mark danger" aria-hidden="true">◇</span><p className="eyebrow">RUN OVER · FILES SAFE</p><h3>A crash.<br /><em>Not a lost file.</em></h3><p>{score.toLocaleString()} points · {Math.floor(game.distance)} m<br />{progress?.processed ?? 0} files copied so far. Restart keeps this progress.</p><button className="primary-button" disabled={!canPlay} onClick={() => start()}>Restart runner ↗</button><button className="secondary-button" disabled={!canPlay} onClick={() => { setMode('calm'); start('calm'); }}>Continue in calm mode</button>{readyForFinish && <button className="text-button" onClick={finish}>Finish remaining files without playing</button>}</>}
-          {game.phase === 'finishing' && <><span className="dialog-mark" aria-hidden="true">◈</span><h3>Securing the loot.</h3><p>{game.feedback}</p><p>Download unlocks after ZIP finalization and byte verification.</p></>}
-          {game.phase === 'victory' && <><span className="victory-mark" aria-hidden="true">✓</span><p className="eyebrow">QUEST COMPLETE / INVENTORY VERIFIED</p><h3>Chaos conquered.</h3><p>{progress?.processed ?? 0} files organized · {score.toLocaleString()} points<br />{job.earned} files earned through play · {Math.max(0, (progress?.processed ?? 0) - job.earned)} finished otherwise</p>{organizer.downloadUrl && <a className="primary-button download-button" href={organizer.downloadUrl} download="filequest-organized.zip">Download organized ZIP ↓</a>}<div className="dialog-actions"><button className="text-button" onClick={() => start()}>Continue endless bonus run</button><button className="text-button" onClick={demo}>New synthetic quest</button></div></>}
-          {(game.phase === 'error' || game.phase === 'cancelled') && <><span className="dialog-mark" aria-hidden="true">{game.phase === 'error' ? '!' : '■'}</span><h3>{game.phase === 'error' ? 'Stopped safely.' : 'Take another route.'}</h3><p>{game.feedback}</p><p>Original files remain untouched. No partial ZIP is offered.</p><button className="primary-button" onClick={demo}>Start a fresh demo</button><button className="secondary-button" onClick={organizer.reset}>Choose another ZIP</button></>}
-        </div></div>}
-      </section>
-      <div className="chaos-feedback" role="status" aria-live="polite"><span aria-hidden="true">›</span>{game.feedback}</div>
-      <p id="chaos-track" className={game.mode === 'calm' && game.phase === 'playing' ? 'calm-track' : 'sr-only'}>Selected lane: {laneNames[game.lane]}. {incoming.length ? incoming.map((entity) => `${entityNames[entity.kind]} in ${laneNames[entity.lane]} lane`).join('; ') : 'Track ahead is clear.'}</p>
-      <div className="chaos-controls"><button className="secondary-button" disabled={game.phase !== 'playing'} aria-label="Steer left" onClick={() => engine.move(-1)}>←</button>{game.mode === 'calm' ? <button className="primary-button" disabled={game.phase !== 'playing'} onClick={() => engine.step()}>Advance safely</button> : <span id="chaos-keys"><kbd>←</kbd><kbd>→</kbd> / A D steer<br /><kbd>P</kbd> pause · swipe on mobile</span>}<button className="secondary-button" disabled={game.phase !== 'playing'} aria-label="Steer right" onClick={() => engine.move(1)}>→</button>
-        {['playing', 'paused'].includes(game.phase) && <button className="secondary-button" onClick={() => game.phase === 'paused' ? resume() : pause()}>{game.phase === 'paused' ? 'Resume' : 'Pause'}</button>}
-      </div>
-      {game.mode === 'calm' && <p id="chaos-keys" className="helper">No clock runs. Move with arrows / A D / 1–3, then press Space or Advance. Choose Finish sorting at any time.</p>}
-      <div className="chaos-legend" aria-label="Collectibles and hazards"><span>◆ Energy → up to 8 files</span><span>▧ Avoid crates</span><span>S Shield</span><span>M Magnet</span><span>+ Repair</span><span>Wave → up to 16 files</span></div>
-      <div className="chaos-bottom"><label><input type="checkbox" checked={reduced} onChange={(event) => setReduced(event.target.checked)} /> Reduced effects</label>{readyForFinish && <button className="text-button" onClick={finish}>Finish sorting without playing ↗</button>}{active && <button className="text-button" onClick={cancel}>Cancel quest</button>}</div>
+      <ol className="quest-steps" id="how-it-works" aria-label="How FileQuest works"><li><span className="step-index">01</span><Icon name="folder" /><div><strong>Bring the mess</strong><p>Choose a ZIP or start with synthetic files.</p></div></li><li><span className="step-index">02</span><Icon name="bolt" /><div><strong>Play with a purpose</strong><p>Energy and survival unlock real sorting work.</p></div></li><li><span className="step-index">03</span><Icon name="download" /><div><strong>Take home the order</strong><p>Download verified files in organized folders.</p></div></li></ol>
     </section>
-    <aside className="chaos-inventory" aria-label="Actual file organization">
-      <section className="panel chaos-mission"><div className="mission-top"><p className="eyebrow">THE REAL REWARD</p><span className={`worker-indicator ${job.busy ? 'busy' : ''}`}>{job.busy ? 'SORTING FILES' : 'ON YOUR DEVICE'}</span></div><h2>A clean inventory.</h2><p>Play the runner. Take home organized files.</p>
-        <div className="actual-total"><strong>{progress?.processed ?? 0}<small> / {progress ? progress.total - progress.skipped : 0}</small></strong><span>FILES VERIFIED & COPIED</span></div>
-        <progress aria-label="Actual file organization progress" value={progress?.processed ?? 0} max={Math.max(1, progress ? progress.total - progress.skipped : 1)} />
-        <dl className="chaos-counts"><div><dt>Remaining</dt><dd>{progress?.remaining ?? 0}</dd></div><div><dt>Skipped</dt><dd>{progress?.skipped ?? 0}</dd></div><div><dt>Failed</dt><dd>{progress?.failed ?? 0}</dd></div></dl>
-        <div className="earned-counts"><span>Game-earned <b>{job.earned}</b></span><span>Finish / other <b>{Math.max(0, (progress?.processed ?? 0) - job.earned)}</b></span></div>
-        <p className="ack-feedback" role="status" aria-live="polite">{job.busy ? 'Copying and checking your earned files. Totals update after verification.' : job.batches ? `${job.lastFiles} files verified in the last batch. ${job.batches} earned batches completed.` : 'Collect energy or survive a wave to start organizing.'}{job.credit ? ` Next earned credit: up to ${job.credit} files.` : ''}</p>
-        <div className="category-list" aria-label="Successfully processed files by category">{CATEGORIES.map((category) => <span key={category}>{category} {organizer.manifest?.entries.filter((entry) => entry.category === category && entry.status === 'processed').length ?? 0}</span>)}</div>
-        <p className="helper">Your files are processed on this device. Download an organized copy; originals stay untouched.</p>
+    <div className="workspace-caption"><span><span className="status-dot" /> YOUR PLAYABLE WORKSPACE</span><span><Icon name="shield" size={15} /> Private files. Real progress.</span></div>
+    <div className="chaos-layout">
+      <section ref={panel} className="chaos-game" id="arena" aria-labelledby="chaos-title" onKeyDown={keyboard}
+        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) pause(); }}>
+        <div className="chaos-heading"><div className="game-identity"><span className="game-emblem"><Icon name="bolt" size={27} /></span><div><p className="eyebrow">THE FILEQUEST ARCADE</p><h2 id="chaos-title">Chaos <span>Run</span></h2></div></div><span className={`chaos-badge badge-${game.phase}`}><span className="status-dot" />{bonus.current ? 'Bonus run' : game.phase === 'playing' ? game.mode === 'calm' ? 'Calm mode' : 'Run live' : game.phase === 'tutorial' ? 'Ready to play' : game.phase === 'gameover' ? 'Run over' : game.phase === 'victory' ? 'Complete' : game.phase}</span></div>
+        <div className="chaos-hud" aria-label="Run statistics">
+          <div className="score-stat"><span>Run score</span><strong>{score.toLocaleString().padStart(5, '0')}</strong></div>
+          <div><span>Hull integrity</span><strong className="health-pips" role="img" aria-label={`${game.health} of 3 health`}>{[0, 1, 2].map((index) => <span key={index} className={index < game.health ? 'hull-full' : 'hull-empty'}><Icon name="heart" size={19} /></span>)}</strong></div>
+          <div><span>Energy collected</span><strong>{game.orbs}<small>◆</small></strong></div>
+          <div><span>Combo</span><strong className="violet">×{multiplier(game.combo)}</strong></div>
+        </div>
+        <section ref={arena} className={`chaos-stage phase-${game.phase} ${reduced ? 'reduced-effects' : ''}`} tabIndex={0} aria-label="Chaos Run game arena" aria-describedby="chaos-keys chaos-track"
+          onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { swipe.current = null; }}>
+          <RunnerCanvas engine={engine} reduced={reduced} />
+          <div className="track-labels" aria-hidden="true"><span>SECTOR {String(game.waves + 1).padStart(2, '0')}</span><span>{game.speed.toFixed(1)}× SPEED <i /> {Math.floor(game.distance)} M</span></div>
+          {!overlay && <div className="power-hud"><span className={game.shield > 0 ? 'power-active' : ''}><Icon name="shield" size={16} />{game.shield > 0 ? `Shield · ${Math.ceil(game.shield / 1000)}s` : 'Shield offline'}</span><span className={game.magnet > 0 ? 'power-active' : ''}><Icon name="bolt" size={16} />{game.magnet > 0 ? `Magnet · ${Math.ceil(game.magnet / 1000)}s` : 'Magnet offline'}</span></div>}
+          {overlay && <div className="chaos-overlay"><div ref={dialog} className="chaos-dialog" role="group" tabIndex={-1} aria-label={`Run state: ${game.phase}`}>
+            {game.phase === 'tutorial' && <><p className="eyebrow"><Icon name="bolt" size={15} /> DODGE. COLLECT. ORGANIZE.</p><h3>A cleaner folder.<br /><em>One thrilling run.</em></h3><p>Steer through the clutter. Collect lime energy diamonds to earn real file-sorting batches.</p>
+              <div className="chaos-mode" role="group" aria-label="Game mode"><button aria-pressed={mode === 'rush'} onClick={() => setMode('rush')}><Icon name="bolt" size={18} /><span>Chaos<small>Fast-paced · 3 health</small></span></button><button aria-pressed={mode === 'calm'} onClick={() => setMode('calm')}><Icon name="shield" size={18} /><span>Calm<small>No timer · your pace</small></span></button></div>
+              <button className="primary-button start-button" disabled={organizer.phase === 'reading' || organizer.batchBusy} onClick={() => canPlay ? start() : demo()}><Icon name="play" size={17} />{organizer.phase === 'reading' ? 'Checking your inventory…' : canPlay ? remaining === 0 ? 'Finalize empty inventory' : `Start run · ${remaining} files` : 'Play instant demo'}<Icon name="arrow" size={18} /></button>
+              <small>{canPlay ? 'Your inspected archive is ready. Originals stay untouched.' : '120 real synthetic files. Generated on your device.'}<br />Choose Calm or Finish sorting for an untimed experience.</small>
+            </>}
+            {game.phase === 'paused' && <><span className="dialog-mark"><Icon name="pause" size={30} /></span><p className="eyebrow">TAKE YOUR TIME</p><h3>The chaos can wait.</h3><p>Your run is paused. Already-earned file work may finish; new gameplay batches wait for you.</p><button className="primary-button" onClick={resume}><Icon name="play" size={17} /> Resume run</button><button className="text-button" onClick={() => { setMode('calm'); start('calm'); }}>Restart in Calm · keep file progress</button></>}
+            {game.phase === 'gameover' && <><span className="dialog-mark danger"><Icon name="refresh" size={30} /></span><p className="eyebrow">RUN OVER · FILES SAFE</p><h3>A fresh run<br /><em>starts here.</em></h3><div className="run-recap"><span><b>{score.toLocaleString()}</b> points</span><span><b>{Math.floor(game.distance)}</b> metres</span><span><b>{progress?.processed ?? 0}</b> files copied</span></div><p>Your completed file work is safe. Restart the runner and pick up where your inventory left off.</p><button className="primary-button" disabled={!canPlay} onClick={() => start()}><Icon name="refresh" size={18} /> Restart run</button><button className="secondary-button" disabled={!canPlay} onClick={() => { setMode('calm'); start('calm'); }}>Continue in Calm</button>{readyForFinish && <button className="text-button" onClick={finish}>Finish remaining files without playing <Icon name="arrow" size={16} /></button>}</>}
+            {game.phase === 'finishing' && <><span className="dialog-mark"><Icon name="layers" size={30} /></span><p className="eyebrow">THE FINISHING TOUCH</p><h3>Packing your progress.</h3><p>{game.feedback}</p><div className="packaging-note"><Icon name="shield" size={19} /> Download unlocks after final byte verification.</div></>}
+            {game.phase === 'victory' && <><span className="victory-mark"><Icon name="check" size={34} /></span><p className="eyebrow">QUEST COMPLETE · EXPORT VERIFIED</p><h3>Chaos, conquered.</h3><div className="completion-number">{progress?.processed ?? 0}<span>real files organized</span></div><div className="run-recap"><span><b>{score.toLocaleString()}</b> run score</span><span><b>{job.earned}</b> game-earned</span><span><b>{Math.max(0, (progress?.processed ?? 0) - job.earned)}</b> finished otherwise</span></div>{organizer.downloadUrl && <a className="primary-button download-button" href={organizer.downloadUrl} download="filequest-organized.zip"><Icon name="download" /> Download organized ZIP</a>}<small>Your file contents preserved. A full manifest included.</small><div className="dialog-actions"><button className="text-button" onClick={() => start()}>Continue bonus run</button><button className="text-button" onClick={demo}>New demo quest</button><button className="text-button" onClick={() => { organizer.reset(); uploadInput.current?.focus(); }}>Organize another ZIP</button></div></>}
+            {(game.phase === 'error' || game.phase === 'cancelled') && <><span className={`dialog-mark ${game.phase === 'error' ? 'danger' : ''}`}><Icon name="shield" size={30} /></span><p className="eyebrow">YOUR ORIGINALS ARE SAFE</p><h3>{game.phase === 'error' ? 'Stopped safely.' : 'A new route awaits.'}</h3><p>{game.feedback}</p><small>No partial ZIP is offered. Choose another archive to try again.</small><button className="primary-button" onClick={demo}><Icon name="play" size={17} /> Start a fresh demo</button><button className="secondary-button" onClick={() => { organizer.reset(); uploadInput.current?.focus(); }}>Choose another ZIP</button></>}
+          </div></div>}
+        </section>
+        <div className="chaos-feedback" role="status" aria-live="polite"><Icon name="bolt" size={16} />{game.feedback}</div>
+        <p id="chaos-track" className={game.mode === 'calm' && game.phase === 'playing' ? 'calm-track' : 'sr-only'}>Selected lane: {laneNames[game.lane]}. {incoming.length ? incoming.map((entity) => `${entityNames[entity.kind]} in ${laneNames[entity.lane]} lane`).join('; ') : 'Track ahead is clear.'}</p>
+        <div className="chaos-controls"><button className="secondary-button steer-button" disabled={game.phase !== 'playing'} aria-label="Steer left" onClick={() => engine.move(-1)}>←</button>{game.mode === 'calm' ? <button className="primary-button" disabled={game.phase !== 'playing'} onClick={() => engine.step()}>Advance</button> : <span id="chaos-keys"><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> to steer <span>Swipe on mobile · <kbd>P</kbd> to pause</span></span>}<button className="secondary-button steer-button" disabled={game.phase !== 'playing'} aria-label="Steer right" onClick={() => engine.move(1)}>→</button>
+          {['playing', 'paused'].includes(game.phase) && <button className="secondary-button pause-button" onClick={() => game.phase === 'paused' ? resume() : pause()}><Icon name={game.phase === 'paused' ? 'play' : 'pause'} size={16} />{game.phase === 'paused' ? 'Resume' : 'Pause'}</button>}
+        </div>
+        {game.mode === 'calm' && <p id="chaos-keys" className="helper">No clock runs. Move with arrows / A D / 1–3, then press Space or Advance. Finish sorting is always available.</p>}
+        <details className="game-guide"><summary>Know your pickups <span>Energy, power-ups & hazards</span></summary><div className="chaos-legend"><span><i className="energy-diamond" /> Energy earns up to 8 files</span><span><b className="hazard-key">×</b> Avoid crates & moving hazards</span><span><kbd>S</kbd> Shield absorbs a hit</span><span><kbd>M</kbd> Magnet collects across lanes</span><span><kbd>+</kbd> Repair restores health</span><span><Icon name="layers" size={18} /> A survived wave earns up to 16 files</span></div></details>
+        <div className="chaos-bottom"><label><input type="checkbox" checked={reduced} onChange={(event) => setReduced(event.target.checked)} /> Reduced effects</label>{readyForFinish && <button className="text-button" onClick={finish}>Finish without playing <Icon name="arrow" size={16} /></button>}{active && <button className="text-button cancel-button" onClick={cancel}>Cancel quest</button>}</div>
       </section>
-      <section className="panel chaos-zip"><InventoryControls organizer={organizer} gameActive={active} onFinish={finish} onCancel={cancel} /></section>
-    </aside>
-  </div>;
+      <aside className="chaos-inventory" aria-label="Actual file organization">
+        <section className={`panel chaos-mission ${completed ? 'mission-complete' : ''}`} aria-labelledby="inventory-title"><div className="mission-top"><p className="eyebrow">REAL WORK. REAL REWARD.</p><span className={`worker-indicator ${organizer.batchBusy ? 'busy' : ''}`}><span className="status-dot" />{completed ? 'Verified' : organizer.batchBusy ? 'Processing' : 'On-device'}</span></div><h2 id="inventory-title">Your inventory</h2><p className="mission-description">{completed ? 'A clean copy, ready to take with you.' : progress ? 'Every counted file has been copied and checked.' : 'A little play. An actually organized archive.'}</p>
+          <div className="progress-heading"><div className="actual-total"><strong>{progress?.processed ?? 0}<small> / {totalFiles}</small></strong><span>FILES VERIFIED & COPIED</span></div><span className="progress-percent">{percent}<small>%</small><span>files copied</span></span></div>
+          <progress aria-label="Actual file organization progress" value={progress?.processed ?? 0} max={Math.max(1, totalFiles)} />
+          <dl className="chaos-counts"><div><dt>Remaining</dt><dd>{progress?.remaining ?? 0}</dd></div><div><dt>Skipped</dt><dd>{progress?.skipped ?? 0}</dd></div><div className={(progress?.failed ?? 0) > 0 ? 'has-failures' : ''}><dt>Failed</dt><dd>{progress?.failed ?? 0}</dd></div></dl>
+          <div className="earned-counts"><span><Icon name="bolt" size={16} /> Game-earned <b>{job.earned}</b></span><span><Icon name="check" size={16} /> Finish / other <b>{Math.max(0, (progress?.processed ?? 0) - job.earned)}</b></span></div>
+          <p className="ack-feedback" role="status" aria-live="polite">{completed ? 'All file bytes checked. Your download is ready.' : organizer.phase === 'error' ? 'Processing stopped. No partial download is available.' : organizer.phase === 'cancelled' ? 'Quest cancelled. Original files remain untouched.' : organizer.phase === 'packaging' || game.phase === 'finishing' ? 'Finalizing the export. Download appears after verification.' : job.busy ? 'Verifying earned files. Counts update after confirmation.' : job.batches ? `${job.lastFiles} files verified in the last batch. ${job.batches} earned batches complete.` : 'Energy pickups and survived waves unlock sorting batches.'}{job.credit ? ` Up to ${job.credit} files of earned credit waiting.` : ''}</p>
+          <div className="category-heading"><h3>Organized destinations</h3><span>{categoryCounts.filter(({ count }) => count > 0).length} / {CATEGORIES.length} categories</span></div><div className="category-list" aria-label="Successfully processed files by category">{categoryCounts.map(({ category, count }) => <div key={category} className={`category-row ${count ? 'category-populated' : ''}`}><Icon name="folder" size={17} /><span>{category}</span><b>{count}</b></div>)}</div>
+          <p className="inventory-footnote"><Icon name="shield" size={15} /> File counts come from verified copies, never the game timer.</p>
+        </section>
+        <section className="panel chaos-zip"><InventoryControls organizer={organizer} gameActive={active} onFinish={finish} onCancel={cancel} uploadInputRef={uploadInput} /></section>
+      </aside>
+    </div>
+  </>;
 }

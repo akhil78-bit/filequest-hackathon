@@ -1,4 +1,4 @@
-import { hazardDestination, PLAYER_Z } from './model';
+﻿import { hazardDestination, PLAYER_Z } from './model';
 import type { RunState } from './model';
 
 export function project(lane: number, z: number, width: number, height: number) {
@@ -25,19 +25,19 @@ export function paintRun(ctx: CanvasRenderingContext2D, state: RunState, width: 
     ctx.fillRect(x, height * .23 - towerHeight, width / 26, towerHeight);
   }
   const glow = ctx.createRadialGradient(width / 2, height * .21, 0, width / 2, height * .21, width * .38);
-  glow.addColorStop(0, '#b8fa7133'); glow.addColorStop(1, '#b8fa7100'); ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height * .65);
+  glow.addColorStop(0, '#9e83ff2b'); glow.addColorStop(1, '#9e83ff00'); ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height * .65);
   const line = (x1: number, y1: number, x2: number, y2: number, color: string, weight = 1) => {
     ctx.strokeStyle = color; ctx.lineWidth = weight; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
   };
   ctx.fillStyle = '#101a24'; ctx.beginPath(); ctx.moveTo(width * .44, height * .18); ctx.lineTo(width * .56, height * .18); ctx.lineTo(width * 1.02, height); ctx.lineTo(-width * .02, height); ctx.closePath(); ctx.fill();
   for (const boundary of [-.5, .5, 1.5, 2.5]) {
     const start = project(boundary, 0, width, height), end = project(boundary, 1.08, width, height);
-    line(start.x, start.y, end.x, end.y, boundary === -.5 || boundary === 2.5 ? '#c6fb7288' : '#749fb044', 1.4);
+    line(start.x, start.y, end.x, end.y, boundary === -.5 || boundary === 2.5 ? '#75e3ef88' : '#749fb044', 1.4);
   }
   for (let index = 0; index < 16; index++) {
     const z = ((index / 16 + (reduced ? 0 : (state.distance + interpolation * .02 * state.speed) / 150)) % 1);
     const left = project(-.5, z, width, height), right = project(2.5, z, width, height);
-    line(left.x, left.y, right.x, right.y, `rgba(130,190,160,${z * .14})`);
+    line(left.x, left.y, right.x, right.y, `rgba(100,160,210,${z * .14})`);
   }
   for (const entity of [...state.entities].sort((a, b) => a.z - b.z)) {
     if (entity.z < 0 || entity.z > 1.08 || entity.resolved) continue;
@@ -71,9 +71,9 @@ export function paintRun(ctx: CanvasRenderingContext2D, state: RunState, width: 
     ctx.strokeStyle = state.shield > 0 ? '#7ddfff' : '#ff95aa'; ctx.lineWidth = 2;
     ctx.fillStyle = state.shield > 0 ? '#7ddfff18' : '#ff95aa15'; ctx.beginPath(); ctx.ellipse(0, 0, hull * 1.7, hull * 1.9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
-  ctx.fillStyle = '#cefa7255'; ctx.beginPath(); ctx.moveTo(-hull * .55, hull); ctx.lineTo(0, hull * (reduced ? 2 : 2.3 + Math.sin(state.elapsed / 90) * .25)); ctx.lineTo(hull * .55, hull); ctx.closePath(); ctx.fill();
-  ctx.shadowBlur = reduced ? 0 : 20; ctx.shadowColor = '#cefa72';
-  ctx.fillStyle = '#c9fa7a'; ctx.beginPath(); ctx.moveTo(0, -hull * 1.35); ctx.lineTo(hull, hull * .85); ctx.lineTo(hull * .45, hull * 1.15); ctx.lineTo(-hull * .45, hull * 1.15); ctx.lineTo(-hull, hull * .85); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#75e3ef44'; ctx.beginPath(); ctx.moveTo(-hull * .55, hull); ctx.lineTo(0, hull * (reduced ? 2 : 2.3 + Math.sin(state.elapsed / 90) * .25)); ctx.lineTo(hull * .55, hull); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = reduced ? 0 : 20; ctx.shadowColor = '#75e3ef';
+  ctx.fillStyle = '#92eaf4'; ctx.beginPath(); ctx.moveTo(0, -hull * 1.35); ctx.lineTo(hull, hull * .85); ctx.lineTo(hull * .45, hull * 1.15); ctx.lineTo(-hull * .45, hull * 1.15); ctx.lineTo(-hull, hull * .85); ctx.closePath(); ctx.fill();
   ctx.shadowBlur = 0; ctx.fillStyle = '#1b353b'; ctx.beginPath(); ctx.moveTo(0, -hull * .65); ctx.lineTo(hull * .4, hull * .35); ctx.lineTo(-hull * .4, hull * .35); ctx.closePath(); ctx.fill();
   line(-hull * .72, hull * .6, -hull * .5, hull * .6, '#fffce4', 3);
   line(hull * .72, hull * .6, hull * .5, hull * .6, '#fffce4', 3);

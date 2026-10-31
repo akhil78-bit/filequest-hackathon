@@ -4,6 +4,7 @@ import { CATEGORIES, planFiles } from './features/organizer/classify';
 import { DEMO_PATHS } from './features/organizer/demo';
 import { useOrganizer } from './features/organizer/useOrganizer';
 import { ChaosRun } from './features/game/chaos/ChaosRun';
+import { Icon } from './components/Icon';
 
 export default function App() {
   const organizer = useOrganizer();
@@ -35,23 +36,17 @@ export default function App() {
       <div className="app-shell">
         <header className="header">
           <a className="brand" href="#main" aria-label="FileQuest home">
-            <span className="brand-icon" aria-hidden="true">F<span>Q</span></span>
-            FileQuest<span className="brand-dot">.</span>
+            <span className="brand-icon"><Icon name="layers" size={24} /></span>
+            FileQuest<span className="brand-edition">CHAOS RUN</span>
           </a>
-          <span className="build-label"><span aria-hidden="true" /> CHAOS RUN / FILES STAY LOCAL</span>
+          <nav aria-label="Main navigation"><a href="#arena">The arcade</a><a href="#how-it-works">How it works</a><a href="#classifier">Sorting rules</a></nav>
+          <span className="build-label"><Icon name="shield" size={16} /> Local by design</span>
         </header>
 
         <main id="main">
-          <section className="intro" aria-labelledby="page-title">
-            <p className="eyebrow">A HIGH SCORE YOU CAN TAKE HOME</p>
-            <h1 id="page-title">Outrun the mess. <span>Keep the loot.</span></h1>
-            <p className="intro-copy">An arcade run. A cleaner inventory. Your actual files, organized.</p>
-            <p className="privacy"><span aria-hidden="true">◈</span> Built for on-device processing. Your files stay with you.</p>
-          </section>
-
           <ChaosRun organizer={organizer} />
 
-          <details className="filename-lab"><summary>Explore the filename classifier · rules & previews</summary>
+          <details className="filename-lab" id="classifier"><summary><span>Inside the organizer</span> Explore sorting rules & filename previews</summary>
           <div className="workspace">
             <section className="panel preview-panel" aria-labelledby="preview-title">
               <div className="panel-top">
@@ -132,7 +127,7 @@ export default function App() {
             <span><b>Play</b> Energy & survival earn real sorting work</span>
           </section>
         </main>
-        <footer><span>FILEQUEST / PROMPTWARS × OUTLIER 2026</span><span>A cleaner folder is the high score.</span></footer>
+        <footer><span><b>FileQuest</b> Built for PromptWars × OUTLIER 2026</span><span>Your files. Your device. Your next high score.</span></footer>
       </div>
     </>
   );

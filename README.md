@@ -27,7 +27,7 @@ also steer. Window blur, hidden tabs and keyboard focus leaving the game panel
 pause the runner and new requests; already-earned in-flight work may finish.
 
 **Calm mode** has no wall-clock motion or reaction deadline: select a lane, then
-press **Advance safely** or Space/Enter from the arena. Reduced-motion preferences
+press **Advance** or Space/Enter from the arena. Reduced-motion preferences
 default to calm; reduced effects disable camera motion, particles and cosmetic
 animation. Health reaching zero opens game-over with restart/continue-in-calm
 and explicit Finish controls. Restart resets run stats and keeps processed files,
@@ -176,3 +176,5 @@ verify public GitHub visibility, exactly one remote branch (`main`), and Git
 history below 10 MB. Keep dependencies, build outputs, archives and secrets out
 of Git. Deployments, pushes and scored assessments require separate approval;
 never automatically submit to the judging portal.
+
+Latest redesign, local browser verification, and deployment caveats: [final review](docs/FINAL_REVIEW.md). Vercel static hosting is configured in `vercel.json`; Cloud Run remains the required hackathon hosting target.
