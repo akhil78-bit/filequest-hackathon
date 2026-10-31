@@ -1,0 +1,23 @@
+# Copy into .github/workflows/ci.yml AFTER Codex creates package.json and working npm scripts.
+name: Checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --run
+      - run: npm run build
+      - name: Check Git repository constraints
+        run: python scripts/check_submission.py
+        # Note: CI checkout may be shallow and remote branches incomplete; verify these manually locally as well.

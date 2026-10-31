@@ -1,0 +1,5 @@
+# Repo-local Codex configuration; only applied after the project is trusted.
+# Keep the active Codex model inherited from your signed-in account.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
