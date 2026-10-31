@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { strFromU8, unzipSync, zipSync } from 'fflate';
+import { deflateRawSync } from 'node:zlib';
+import { deflateSync, strFromU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { createDemoZip } from '../../src/features/organizer/demo-zip';
 import type { Manifest } from '../../src/features/organizer/protocol';
@@ -174,6 +175,52 @@ describe('archive rejection before decompression', () => {
 });
 
 describe('streaming integrity, failure and cancellation', () => {
+  it.each([1, 1024 * 1024])('rejects %s trailing compressed bytes before repeated decoder buffering', async (padding) => {
+    const data = text('x'), deflated = deflateSync(data);
+    const compressed = new Uint8Array(deflated.length + padding); compressed.set(deflated);
+    let yields = 0;
+    const session = new OrganizerSession(fixtureZip([{ path: 'padded.txt', data, method: 8, compressed }]), () => {}, async () => { yields++; });
+    await expect(session.requestBatch('padded', 1)).rejects.toThrow('trailing data');
+    expect(yields).toBe(1); // Reject at the first 1 KiB push, not after scanning padding.
+    expect(session.snapshot().progress).toMatchObject({ processed: 0, failed: 1, phase: 'error' });
+    expect(() => session.takeOutput()).toThrow();
+  });
+
+  it('rejects a non-final DEFLATE block even when its bytes and CRC match', async () => {
+    // Stored block: BFINAL=0, LEN=1, NLEN=65534, payload=x; no following block.
+    const compressed = new Uint8Array([0, 1, 0, 254, 255, 120]);
+    const session = new OrganizerSession(fixtureZip([{ path: 'truncated.txt', data: text('x'), method: 8, compressed }]), () => {}, noPause);
+    await expect(session.requestBatch('missing-end', 1)).rejects.toThrow();
+    expect(session.snapshot().progress.processed).toBe(0);
+    expect(() => session.takeOutput()).toThrow();
+  });
+
+  it('accepts empty and multi-block deflate payloads at input-quantum boundaries', async () => {
+    const stored = new Uint8Array(65535 + 5 + 2);
+    stored.set([0, 255, 255, 0, 0]);
+    stored.fill(120, 5, 65540); stored.set([3, 0], 65540);
+    const result = await organize(fixtureZip([
+      { path: 'empty.txt', method: 8 },
+      { path: 'blocks.txt', method: 8, data: new Uint8Array(65535).fill(120), compressed: stored },
+    ]));
+    expect(unzipSync(result.bytes)['Documents/blocks.txt']).toEqual(new Uint8Array(65535).fill(120));
+    expect(result.manifest.progress.processed).toBe(2);
+  });
+
+  it.each([0, 1, 6, 9])('preserves independent zlib streams at level %s across decoder boundaries', async (level) => {
+    let seed = 987654321;
+    const sources = [0, 1, 1023, 1024, 1025, 65535, 1024 * 1024 + 7].map((size) => {
+      const data = Uint8Array.from({ length: size }, () => {
+        seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+        return seed & 255;
+      });
+      return { path: `independent-${size}.bin`, data, method: 8, compressed: deflateRawSync(data, { level }) };
+    });
+    const result = await organize(fixtureZip(sources)), output = unzipSync(result.bytes);
+    for (const entry of result.manifest.entries) expect(sha256(output[entry.outputPath!]!)).toBe(sha256(sources[entry.id]!.data));
+    expect(result.manifest.progress).toMatchObject({ processed: 7, failed: 0, phase: 'complete' });
+  });
+
   it('implements standard CRC32', () => expect(crc32(text('123456789'))).toBe(0xcbf43926));
 
   it('stops a lying decompression bomb during reading, without publishing successful work', async () => {

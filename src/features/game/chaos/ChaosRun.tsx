@@ -23,6 +23,8 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
   const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [mode, setMode] = useState<RunMode>(() => reduced ? 'calm' : 'rush');
   const arena = useRef<HTMLElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
   const previousJob = useRef(organizer.jobId);
   const demoRequested = useRef(false);
   const swipe = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -69,6 +71,13 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
   }, [job.error, engine, game.phase]);
 
   useEffect(() => {
+    // Announce state changes and recover focus from controls that disappear or
+    // become disabled. Never pull focus back from the ZIP panel or another app.
+    if (game.phase !== 'playing' && game.phase !== 'tutorial' && document.hasFocus()
+      && panel.current?.contains(document.activeElement)) dialog.current?.focus({ preventScroll: true });
+  }, [game.phase]);
+
+  useEffect(() => {
     const visibility = () => { if (document.hidden) pause(); };
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const preference = () => { setReduced(media.matches); if (media.matches) pause(); };
@@ -87,12 +96,13 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
     void organizer.load(new File([createChaosDemo()], 'filequest-chaos-demo.zip', { type: 'application/zip' }));
   };
   const keyboard = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || (event.target as HTMLElement).tagName === 'INPUT') return;
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey
+      || (event.target as HTMLElement).closest('input, select, textarea, [contenteditable="true"]')) return;
     const key = event.key.toLowerCase();
     if (['arrowleft', 'a', 'arrowright', 'd'].includes(key)) { event.preventDefault(); engine.move(key === 'arrowleft' || key === 'a' ? -1 : 1); }
     else if (/^[1-3]$/.test(key)) { event.preventDefault(); engine.select(Number(key) - 1); }
     else if (key === 'p' || key === 'escape') { event.preventDefault(); if (game.phase === 'paused') resume(); else pause(); }
-    else if ((key === ' ' || key === 'enter') && event.target === event.currentTarget && game.mode === 'calm') { event.preventDefault(); engine.step(); }
+    else if ((key === ' ' || key === 'enter') && event.target === arena.current && game.mode === 'calm') { event.preventDefault(); engine.step(); }
   };
   const pointerDown = (event: PointerEvent<HTMLElement>) => {
     if (game.phase !== 'playing' || (event.target as HTMLElement).tagName === 'BUTTON') return;
@@ -109,7 +119,8 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
   const score = Math.floor(game.score);
 
   return <div className="chaos-layout">
-    <section className="chaos-game" aria-labelledby="chaos-title">
+    <section ref={panel} className="chaos-game" aria-labelledby="chaos-title" onKeyDown={keyboard}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) pause(); }}>
       <div className="chaos-heading"><div><p className="eyebrow">ARCADE WITH AN ACTUAL PAYOFF</p><h2 id="chaos-title">CHAOS <span>RUN</span><sup>↗</sup></h2></div><span className="chaos-badge">{bonus.current ? 'BONUS RUN / ZIP COMPLETE' : game.mode === 'calm' && game.phase !== 'tutorial' ? 'CALM / YOU SET THE PACE' : 'DODGE · COLLECT · ORGANIZE'}</span></div>
       <div className="chaos-hud" aria-label="Run statistics">
         <div><span>Run score</span><strong>{score.toLocaleString().padStart(5, '0')}</strong></div>
@@ -118,12 +129,11 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
         <div><span>Combo</span><strong className="lime">×{multiplier(game.combo)}</strong></div>
       </div>
       <section ref={arena} className={`chaos-stage ${reduced ? 'reduced-effects' : ''}`} tabIndex={0} aria-label="Chaos Run game arena" aria-describedby="chaos-keys chaos-track"
-        onKeyDown={keyboard} onBlur={(event) => { if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) pause(); }}
         onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { swipe.current = null; }}>
         <RunnerCanvas engine={engine} reduced={reduced} />
         <div className="track-labels" aria-hidden="true"><span>SECTOR {String(game.waves + 1).padStart(2, '0')}</span><span>{Math.floor(game.distance)} M</span></div>
         {!overlay && <div className="power-hud"><span>{game.shield > 0 ? `S SHIELD ${Math.ceil(game.shield / 1000)}s` : 'S SHIELD OFFLINE'}</span><span>{game.magnet > 0 ? `M MAGNET ${Math.ceil(game.magnet / 1000)}s` : 'M MAGNET OFFLINE'}</span></div>}
-        {overlay && <div className="chaos-overlay"><div className="chaos-dialog">
+        {overlay && <div className="chaos-overlay"><div ref={dialog} className="chaos-dialog" role="group" tabIndex={-1} aria-label={`Run state: ${game.phase}`}>
           {game.phase === 'tutorial' && <><span className="dialog-mark" aria-hidden="true">↯</span><p className="eyebrow">OUTRUN THE CLUTTER</p><h3>Play fast.<br /><em>Leave organized.</em></h3><p>Pilot the neon stream. Dodge crates, collect energy and unlock real file-sorting batches as you go.</p>
             <div className="chaos-mode" role="group" aria-label="Game mode"><button aria-pressed={mode === 'rush'} onClick={() => setMode('rush')}>Chaos mode<small>Endless runner · 3 health</small></button><button aria-pressed={mode === 'calm'} onClick={() => setMode('calm')}>Calm mode<small>No timer · advance by choice</small></button></div>
             <button className="primary-button" disabled={organizer.phase === 'reading' || organizer.batchBusy} onClick={() => canPlay ? start() : demo()}>{organizer.phase === 'reading' ? 'Preparing your inventory…' : canPlay ? remaining === 0 ? 'Finalize empty inventory' : `Run with ${remaining} files ↗` : 'Play instant demo ↗'}</button>

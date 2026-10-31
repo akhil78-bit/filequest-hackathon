@@ -13,6 +13,46 @@ function setup() {
 }
 
 describe('organizer worker protocol', () => {
+  it.each([null, undefined, 42, {}, { type: 'INIT', jobId: 'job', buffer: 1_000_000_000 },
+    { type: 'INIT', jobId: 'job', buffer: { length: 1_000_000_000 } },
+    { type: 'INIT', jobId: '', buffer: new ArrayBuffer(22) },
+    { type: 'REQUEST_BATCH', jobId: 'job', requestId: {}, maxFiles: 1 },
+    { type: 'REQUEST_BATCH', jobId: 'job', requestId: 'a', maxFiles: Infinity },
+    { type: 'UNKNOWN', jobId: 'job', requestId: 'a', maxFiles: 1 },
+  ])('rejects untyped worker input without allocating from it: %j', async (input) => {
+    const { messages, handle } = setup();
+    await handle(input);
+    expect(messages).toEqual([{ type: 'ERROR', jobId: expect.any(String), message: expect.stringContaining('Invalid worker request') }]);
+    await handle({ type: 'INIT', jobId: 'job', buffer: createDemoZip().buffer });
+    expect(messages.at(-1)).toMatchObject({ type: 'READY', manifest: { progress: { processed: 0 } } });
+  });
+
+  it('rejects oversized transferred input with the initiating job ID', async () => {
+    const { messages, handle } = setup();
+    await handle({ type: 'INIT', jobId: 'oversized', buffer: new ArrayBuffer(25 * 1024 * 1024 + 1) });
+    expect(messages).toEqual([{ type: 'ERROR', jobId: 'oversized', message: expect.stringContaining('25 MiB') }]);
+  });
+
+  it('never treats an unknown message as an instruction to copy files', async () => {
+    const { messages, handle } = setup();
+    await handle({ type: 'INIT', jobId: 'job', buffer: createDemoZip().buffer });
+    await handle({ type: 'UNKNOWN', jobId: 'job', requestId: 'unexpected', maxFiles: 50 });
+    expect(messages.map((message) => message.type)).toEqual(['READY', 'ERROR']);
+    await handle({ type: 'REQUEST_BATCH', jobId: 'job', requestId: 'real', maxFiles: 1 });
+    expect(messages.at(-1)).toMatchObject({ type: 'BATCH_RESULT', manifest: { progress: { processed: 1 } } });
+  });
+
+  it('bounds queued batches and lets cancellation bypass the queue', async () => {
+    const { messages, handle } = setup();
+    await handle({ type: 'INIT', jobId: 'job', buffer: createDemoZip().buffer });
+    const pending = Array.from({ length: 100 }, (_, id) => handle({ type: 'REQUEST_BATCH', jobId: 'job', requestId: `flood-${id}`, maxFiles: 1 }));
+    expect(messages.filter((message) => message.type === 'ERROR')).toHaveLength(92);
+    await handle({ type: 'CANCEL', jobId: 'job' });
+    await Promise.all(pending);
+    expect(messages.at(-1)).toMatchObject({ type: 'CANCEL', manifest: { progress: { processed: 0 } } });
+    expect(messages.some((message) => message.type === 'COMPLETE')).toBe(false);
+  });
+
   it('inspects without fake progress; queued pickup batches are idempotent and COMPLETE transfers a real ZIP once', async () => {
     const { messages, transfers, handle } = setup();
     await handle({ type: 'INIT', jobId: 'job', buffer: createDemoZip().buffer });
@@ -46,6 +86,20 @@ describe('organizer worker protocol', () => {
     await handle({ type: 'REQUEST_BATCH', jobId: 'stale', requestId: 'pickup', maxFiles: 5 });
     await handle({ type: 'CANCEL', jobId: 'stale' });
     expect(messages.map((message) => message.type)).toEqual(['READY']);
+  });
+
+  it('acknowledges cancellation even when finalization won the message race', async () => {
+    const { messages, handle } = setup();
+    await handle({ type: 'INIT', jobId: 'race', buffer: createDemoZip().buffer });
+    await handle({ type: 'REQUEST_BATCH', jobId: 'race', requestId: 'last', maxFiles: 50 });
+    expect(messages.at(-1)?.type).toBe('COMPLETE');
+    // The main thread requested cancellation before receiving COMPLETE and
+    // discarded that buffer. It must not get stuck with a complete/no-URL state.
+    await handle({ type: 'CANCEL', jobId: 'race' });
+    expect(messages.at(-1)).toMatchObject({ type: 'CANCEL', manifest: { progress: { phase: 'cancelled', processed: 20, remaining: 0 } } });
+    await handle({ type: 'REQUEST_BATCH', jobId: 'race', requestId: 'late', maxFiles: 1 });
+    expect(messages.at(-1)?.type).toBe('CANCEL');
+    expect(messages.filter((message) => message.type === 'COMPLETE')).toHaveLength(1);
   });
 
   it('cancels queued work, acknowledges cancellation and never publishes COMPLETE', async () => {

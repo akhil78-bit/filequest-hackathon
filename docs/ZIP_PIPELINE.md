@@ -36,6 +36,13 @@ before its callback; malicious data is rejected before that chunk is retained.
 Stored input is copied in 64 KiB quanta. Work yields between files and periodically
 inside large entries so cancellation can be handled by the worker event loop.
 
+`inflate-guard.ts` checks the actual DEFLATE end boundary after every push.
+Trailing bytes (including concatenated streams) are rejected before the decoder
+can repeatedly retain/copy padding; missing final blocks are rejected too.
+fflate's callback `final` flag alone represents caller EOF, not verified stream
+completion. The guard isolates a dependency on pinned fflate 0.8.3 internal state;
+independent zlib streams and actual bundled-worker tests cover compatibility.
+
 For a file to become `processed`, actual length and CRC32 must match the source
 metadata and all its contents must have passed into the output ZIP stream. Final
 CRC32 checks on stored output payloads, output path/count/size checks and a valid
@@ -64,6 +71,13 @@ the original entry IDs with current totals and never copy or count files twice.
 also finalizes and verifies the ZIP before a single `COMPLETE` transfers the
 output buffer. During finalization, the state is `packaging`, even if all source
 files have been copied. The UI exposes no download until it receives `COMPLETE`.
+
+The worker validates message types, bounded IDs, ArrayBuffer input/size and batch
+sizes at runtime, before constructing views or scheduling work. Its boundary
+allows at most eight outstanding batches; gameplay still allows only one. Cancel
+bypasses that queue. Cancellation arriving just after worker completion still
+acknowledges `cancelled`, preserving copied counts and discarding retained output,
+so a client that discarded an in-flight COMPLETE cannot become complete/no-download.
 
 `CANCEL` aborts pending/in-flight processing and acknowledges a cancelled manifest.
 The client then terminates the worker. No partial download survives cancellation

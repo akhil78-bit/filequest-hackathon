@@ -49,6 +49,10 @@ The original filename-only demo and custom path preview remain available in the
 collapsible classifier lab. They never influence actual processing counters.
 This is local development, not a deployed submission.
 
+Final security review and verified local results are recorded in
+[the audit report](docs/FINAL_AUDIT.md), including the DEFLATE resource-exhaustion
+fix, remaining development-dependency advisory and required browser/release checks.
+
 ## Local development
 
 Requires Node.js 22.13+ and npm. The lockfile pins resolved dependencies.
@@ -106,10 +110,10 @@ npm start
   IDs before releasing a receipt. The organizer hook suppresses per-file
   `PROGRESS` until the earned batch's `BATCH_RESULT`.
 - The original File Rush modules, packet adapter and tests remain intact as
-  reference coverage. There are no new dependencies. The ZIP algorithm, limits,
-  integrity checks and worker protocol remain stable; only the yield mechanism
-  changes to posted `MessageChannel` tasks, avoiding per-file timer clamping while
-  retaining the same cancellation/budget checks. Ports are closed after each yield.
+  reference coverage. There are no new dependencies. Posted `MessageChannel`
+  tasks avoid per-file timer clamping while retaining cancellation/budget checks;
+  ports close after each yield. Worker inputs are runtime-validated and its queue
+  is capped at eight outstanding requests (gameplay normally uses only one).
 
 Enforced ZIP limits: 25 MiB input, 500 files, 1,000 total entries including
 directory markers, 100 MiB total extracted, 20 MiB per file and a 100:1
@@ -117,6 +121,9 @@ per-entry/aggregate compression ratio guard. Actual bytes are checked during
 streaming, including against declared sizes; the whole archive is never expanded
 upfront. Deflate input quanta are 1 KiB, bounding temporary decoder expansion
 before each budget check. Processing yields between files and inside large files.
+The decoder must reach exactly one DEFLATE end boundary; trailing compressed
+payloads are rejected immediately. This guard depends on pinned `fflate` 0.8.3
+decoder state and must be revalidated before changing that dependency.
 
 Supported: classic single-disk stored/deflate ZIPs, ASCII/UTF-8 names, signed or
 unsigned data descriptors. Rejected: encryption, ZIP64, split/self-extracting

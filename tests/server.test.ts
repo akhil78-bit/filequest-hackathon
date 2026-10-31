@@ -98,6 +98,8 @@ describe('Cloud Run static HTTP contract', () => {
     expect(csp).toContain("connect-src 'self'");
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'none'");
+    expect(csp).toContain("form-action 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(response.headers.get('x-frame-options')).toBe('DENY');

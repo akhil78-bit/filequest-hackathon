@@ -11,6 +11,8 @@ import { EarnedBatch } from '../../src/features/organizer/earned-batch';
 import { WorkScheduler } from '../../src/features/game/chaos/work-scheduler';
 import { ChaosEngine } from '../../src/features/game/chaos/model';
 import { createChaosDemo } from '../../src/features/game/chaos/demo';
+import { deflateSync } from 'fflate';
+import { fixtureZip, text } from './fixtures';
 
 let code: string;
 const threads: Worker[] = [];
@@ -58,6 +60,20 @@ function thread() {
 }
 
 describe('actual worker thread transport', () => {
+  it('rejects padded deflate on the actual bundled worker with no ACK or download', async () => {
+    const { worker, waitFor, post, messages } = thread();
+    const data = text('x'), compressed = new Uint8Array(1024 * 1024);
+    compressed.set(deflateSync(data));
+    const ready = waitFor('READY');
+    post({ type: 'INIT', jobId: 'padded', buffer: fixtureZip([{ path: 'x.txt', data, method: 8, compressed }]).buffer });
+    await ready;
+    const error = waitFor('ERROR');
+    post({ type: 'REQUEST_BATCH', jobId: 'padded', requestId: 'one', maxFiles: 1 });
+    expect(await error).toMatchObject({ type: 'ERROR', message: expect.stringContaining('trailing data'), manifest: { progress: { processed: 0, failed: 1 } } });
+    expect(messages.some((message) => message.type === 'BATCH_RESULT' || message.type === 'COMPLETE')).toBe(false);
+    await worker.terminate();
+  });
+
   it('collects energy and survives waves to organize a Chaos Run ZIP over actual thread messaging', async () => {
     const { worker, waitFor, post, messages } = thread();
     const adapter = new EarnedBatch(), source = createChaosDemo(40), original = unzipSync(source);

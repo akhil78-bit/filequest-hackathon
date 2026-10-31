@@ -68,3 +68,18 @@ unverified. No Cloud Run deployment or final GitHub visibility check was perform
 Existing organizer, File Rush and deployment server regressions remain in the
 suite. Manual Canvas/mobile/keyboard/swipe/reduced-motion/Blob download and live
 Cloud Run verification remain outstanding; see `docs/CHAOS_RUN.md`.
+
+## Final security audit
+
+- Padded DEFLATE is rejected on the first decoder quantum, with no successful
+  file count or export; the actual bundled worker also rejects it.
+- Independent Node zlib streams at levels 0/1/6/9 and lengths spanning 1 KiB,
+  64 KiB and 1 MiB boundaries preserve exact bytes and valid manifests.
+- Malformed/unknown worker inputs and oversized buffers fail before work;
+  request flooding is bounded and cancellation bypasses the queue.
+- Completion/cancellation races acknowledge cancellation with truthful counts.
+- Server CSP rejects form submissions/base overrides; SSR checks hostile
+  archive/manifest/error text stays escaped and cannot create executable HTML.
+- Final full suite: 265 passing tests in 11 files. Production HTTP smoke also
+  ran the fetched minified worker, preserving 121 files in five batches and
+  rejecting a padded archive. See `FINAL_AUDIT.md` for scope and limitations.

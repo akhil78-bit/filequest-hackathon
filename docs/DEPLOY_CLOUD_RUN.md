@@ -163,8 +163,10 @@ Checklist before calling the release working:
 - [ ] Missing `/assets/not-found.js` returns 404; `POST /upload` returns 405.
 - [ ] Open the actual HTTPS URL in an incognito/logged-out browser, with no
   developer account permissions. There are no worker/CSP/console failures.
-- [ ] Play the 20-file synthetic demo. Each correct route copies one file only
-  after worker ACK; wrong/repeated actions cannot manufacture progress.
+- [ ] Play Chaos Run's 120-file synthetic demo. Energy, survived waves and
+  distance milestones request bounded batches; real counts change after worker
+  ACK. Starting/steering alone must not launch a full sorting job. Repeated
+  actions cannot duplicate processing. Check explicit Finish/other attribution.
 - [ ] Download and independently extract the ZIP; compare all file bytes to the
   input and inspect `filequest-manifest.json`. Test a real synthetic ZIP upload too.
 - [ ] Cancel/retry, corrupt ZIP rejection, calm mode, explicit Finish sorting,

@@ -3,6 +3,7 @@ import { planFiles } from './classify';
 import type { Manifest, ManifestEntry, Phase } from './protocol';
 import { ArchiveError, crc32, inspectZip, MAX_OUTPUT_BYTES, updateCrc, ZIP_LIMITS } from './zip-format';
 import type { ZipEntry, ZipLimits } from './zip-format';
+import { checkDeflateBoundary } from './inflate-guard';
 
 export class CancelledError extends Error {
   constructor() { super('Sorting cancelled. No partial ZIP is available.'); this.name = 'CancelledError'; }
@@ -85,7 +86,7 @@ export class OrganizerSession {
   private checkCancelled() { if (this.aborted) throw new CancelledError(); }
 
   cancel() {
-    if (this.phase === 'complete' || this.phase === 'error' || this.phase === 'cancelled') return;
+    if (this.phase === 'error' || this.phase === 'cancelled') return;
     this.aborted = true;
     this.phase = 'cancelled';
     for (const record of this.records) if (record.status === 'pending') {
@@ -131,6 +132,7 @@ export class OrganizerSession {
       for (let offset = 0; offset < compressed.length; offset += 1024) {
         this.checkCancelled();
         inflater.push(compressed.subarray(offset, offset + 1024), offset + 1024 >= compressed.length);
+        checkDeflateBoundary(inflater, Math.min(offset + 1024, compressed.length), compressed.length);
         if (offset % 16384 === 0) { await this.pause(); this.checkCancelled(); }
       }
     }
