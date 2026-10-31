@@ -4,9 +4,11 @@ import { createDemoZip } from '../features/organizer/demo-zip';
 import type { useOrganizer } from '../features/organizer/useOrganizer';
 
 export type Organizer = ReturnType<typeof useOrganizer>;
-export function ZipWorkspace({ organizer }: { organizer: Organizer }) {
+export function ZipWorkspace({ organizer, gameActive = false, onFinish, onCancel }: {
+  organizer: Organizer; gameActive?: boolean; onFinish?: () => void; onCancel?: () => void;
+}) {
   const [dragging, setDragging] = useState(false);
-  const active = ['reading', 'processing', 'packaging', 'cancelling'].includes(organizer.phase);
+  const active = gameActive || ['reading', 'packaging', 'cancelling'].includes(organizer.phase) || organizer.batchBusy;
   const ready = organizer.phase === 'ready' || organizer.phase === 'processing';
   const progress = organizer.manifest?.progress;
   const phaseText: Record<Organizer['phase'], string> = {
@@ -52,10 +54,10 @@ export function ZipWorkspace({ organizer }: { organizer: Organizer }) {
       </>}
       <div className="zip-actions">
         {ready && <>
-          <button className="primary-button" onClick={organizer.finishSorting}>Finish sorting</button>
-          <button className="secondary-button" disabled={organizer.batchBusy} onClick={organizer.sortNextBatch}>Sort next 5 files</button>
+          <button className="primary-button" onClick={onFinish ?? organizer.finishSorting}>Finish sorting</button>
+          {!gameActive && <button className="secondary-button" disabled={organizer.batchBusy} onClick={organizer.sortNextBatch}>Sort next 5 files</button>}
         </>}
-        {(active || organizer.phase === 'ready') && <button className="secondary-button" disabled={organizer.phase === 'cancelling'} onClick={organizer.cancel}>Cancel sorting</button>}
+        {(['reading', 'ready', 'processing', 'packaging', 'cancelling'].includes(organizer.phase)) && <button className="secondary-button" disabled={organizer.phase === 'cancelling'} onClick={onCancel ?? organizer.cancel}>Cancel sorting</button>}
         {organizer.downloadUrl && <a className="primary-button download-button" href={organizer.downloadUrl} download="filequest-organized.zip">Download organized ZIP ↓</a>}
       </div>
       {organizer.manifest && <details className="manifest-preview" open={organizer.phase === 'complete'}>

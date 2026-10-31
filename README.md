@@ -5,10 +5,27 @@ Built for PromptWars × OUTLIER 2026.
 
 ## Current milestone
 
-Milestone 2 supports genuine ZIP input, secure inspection, worker-based sorting,
-auditable manifests and verified downloadable output. Choose a ZIP or click
-**Try real ZIP demo** (20 locally generated synthetic files), then **Finish
-sorting** or **Sort next 5 files**. Cancel stops processing and discards export.
+Milestone 3 introduces **File Rush**: steer real file packets to category gates,
+build combos, and download the organized ZIP. **Play synthetic demo** generates
+20 files locally and starts the game; no external upload is required. Or choose
+your own ZIP in the inventory panel and press **Play**.
+
+Every correct route requests exactly **one** file operation. The game waits for
+the matching worker `BATCH_RESULT` before awarding points, advancing the packet or
+updating its processed counters. Wrong routes and timeouts consume a life without
+requesting file work. Slow worker operations freeze the challenge clock.
+
+Use **← / →** or **A / D** to steer, **Space / Enter** to route from the focused
+arena, **1–4** to select a gate, and **P / Escape** to pause/resume. Category gates
+and the large steering/route buttons support touch and native keyboard clicks.
+Focus the arena for its shortcuts. The clock pauses when the window is hidden,
+loses focus, or keyboard focus leaves the game panel.
+
+**Calm mode** removes time limits and speed bonuses. Reduced-motion preferences
+default to calm and suppress packet movement. Losing all three lives never drops
+a file: continue with new lives, switch to calm, or use **Finish sorting without
+playing**. That explicit alternative drains the remaining worker batches without
+adding game points. Cancel stops processing and discards export.
 
 Files are classified by extension and copied into category folders. Source CRC32
 and actual decompressed sizes are checked before counting a file as processed.
@@ -16,9 +33,9 @@ The final output is inspected and its stored payload CRCs are checked again
 before download. Input bytes remain unchanged; no file contents or names are
 sent to a server. The supplied static server has no upload API.
 
-The original filename-only demo and custom path preview remain available, with
-separate labels and no influence on actual processing counters. **Gameplay is
-not implemented yet.** This is local development, not a deployed submission.
+The original filename-only demo and custom path preview remain available in the
+collapsible classifier lab. They never influence actual processing counters.
+This is local development, not a deployed submission.
 
 ## Local development
 
@@ -69,8 +86,13 @@ npm start
   output paths, categories, statuses, byte sizes and CRC32. Empty directory
   markers are explicitly skipped; empty files are preserved. Empty ZIPs produce
   a manifest-only output. Failure/cancellation never exposes a partial ZIP.
-- Add arcade controls after the real ZIP round trip works. An accessible finish
-  control must allow completing the chore without playing.
+- `src/features/game/engine.ts` owns testable game state, challenge time, gates,
+  lives, combos and receipt-based scoring. `FileRush.tsx` renders the DOM arena.
+- `packet-request.ts` links a single game action to its exact worker ACK, rejects
+  stale/parallel packets and shares a repeated in-flight request. The organizer
+  hook suppresses per-file progress until that ACK for game actions; only the
+  explicit finish alternative automatically drains file batches. No ZIP core
+  rewrite or new dependency was needed for gameplay.
 
 Enforced ZIP limits: 25 MiB input, 500 files, 1,000 total entries including
 directory markers, 100 MiB total extracted, 20 MiB per file and a 100:1
@@ -104,6 +126,11 @@ budgets, cancellation and idempotent batch progress. Integration tests bundle th
 actual worker entry and run it on a real Node worker thread, verifying buffer
 transfer and the extractable output. This does not substitute for browser UI,
 download, network-privacy or 390px interaction testing.
+
+Game tests cover correct/wrong routes, combo receipts, slow worker behavior,
+pause, calm mode, lost lives, stale/duplicate ACKs, cancellation and explicit
+finish. A full File Rush demo also runs through the bundled worker on a real
+thread, followed by exact-byte ZIP verification. See [File Rush's contract](docs/FILE_RUSH.md).
 
 The supplied Dockerfile and [Cloud Run instructions](docs/DEPLOY_CLOUD_RUN.md)
 are retained. No deployment has been performed and no live URL is claimed.

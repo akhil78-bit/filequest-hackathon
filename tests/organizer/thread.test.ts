@@ -5,6 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { unzipSync } from 'fflate';
 import { createDemoZip } from '../../src/features/organizer/demo-zip';
 import type { WorkerRequest, WorkerResponse } from '../../src/features/organizer/protocol';
+import { PacketRequest } from '../../src/features/organizer/packet-request';
+import { FileRushEngine } from '../../src/features/game/engine';
 
 let code: string;
 const threads: Worker[] = [];
@@ -52,6 +54,38 @@ function thread() {
 }
 
 describe('actual worker thread transport', () => {
+  it('plays a whole File Rush demo through real one-file worker requests and byte-exact export', async () => {
+    const { worker, waitFor, post } = thread();
+    const packets = new PacketRequest();
+    worker.on('message', (message: WorkerResponse) => packets.receive(message));
+    const ready = waitFor('READY');
+    const source = createDemoZip(), originals = unzipSync(source);
+    post({ type: 'INIT', jobId: 'file-rush', buffer: source.buffer });
+    const initial = await ready;
+    if (initial.type !== 'READY') throw new Error('Missing inspected manifest');
+    let manifest = initial.manifest;
+    worker.on('message', (message: WorkerResponse) => {
+      if ('manifest' in message && message.manifest) manifest = message.manifest;
+      if (message.type === 'ERROR') packets.abort(message.message);
+    });
+    const engine = new FileRushEngine((id, actionId) => packets.request('file-rush', id, actionId, manifest, post));
+    engine.start(manifest.entries, 'calm');
+    const complete = waitFor('COMPLETE');
+    for (let index = 0; index < 20; index++) {
+      engine.select(engine.getSnapshot().gates.indexOf(engine.getSnapshot().packet!.category!));
+      const pending = engine.route(); await engine.route(); await pending;
+      expect(engine.getSnapshot().confirmed).toBe(index + 1);
+      expect(manifest.progress.processed).toBe(index + 1);
+    }
+    const outputMessage = await complete;
+    if (outputMessage.type !== 'COMPLETE') throw new Error('Missing game export');
+    const output = unzipSync(new Uint8Array(outputMessage.buffer));
+    for (const entry of outputMessage.manifest.entries) expect(output[entry.outputPath!]).toEqual(originals[entry.originalPath]);
+    expect(engine.getSnapshot().phase).toBe('finishing');
+    engine.stop('complete', 'Output verified');
+    expect(engine.getSnapshot()).toMatchObject({ phase: 'complete', confirmed: 20 });
+    await worker.terminate();
+  });
   it('transfers an input buffer, sorts batches and returns an extractable output on another thread', async () => {
     const { worker, waitFor, post } = thread();
     const input = createDemoZip(), originals = unzipSync(input);

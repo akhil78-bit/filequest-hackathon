@@ -34,3 +34,19 @@ Notes: Some ZIP files may contain unsupported metadata or dangerous entries. Sho
 Not yet browser-verified: file picker/dropzone, downloaded Blob, keyboard/touch,
 390px layout, reduced motion and absence of file-data network requests. Gameplay,
 public Cloud Run and final GitHub checks are not part of Milestone 2 verification.
+
+## Milestone 3 coverage
+
+- `tests/game/engine.test.ts`: category gates, steering, lives/timeouts, ACK-only
+  score, repeat-input protection, slow workers, pause/resume, calm mode, combos,
+  lost-game retry, replacement, cancellation and late/wrong receipts.
+- `tests/game/integration.test.ts`: game actions cause actual one-file worker
+  operations; wrong/duplicate/stale actions do not process files; completed demo
+  bytes and manifest are correct; corruption/cancel block points/export; explicit
+  finish preserves ZIP correctness without fabricated score.
+- `tests/organizer/thread.test.ts`: full game over actual worker-thread messaging
+  and one-file ACKs, followed by exact-byte extraction verification.
+
+Browser connector unavailable; native Edge control not approved. Browser gameplay,
+390px/touch, keyboard focus, reduced-motion appearance and Blob download remain
+unverified. No Cloud Run deployment or final GitHub visibility check was performed.

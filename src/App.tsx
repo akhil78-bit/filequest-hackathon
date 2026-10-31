@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { CATEGORIES, planFiles } from './features/organizer/classify';
 import { DEMO_PATHS } from './features/organizer/demo';
 import { useOrganizer } from './features/organizer/useOrganizer';
-import { ZipWorkspace } from './components/ZipWorkspace';
+import { FileRush } from './features/game/FileRush';
 
 export default function App() {
   const organizer = useOrganizer();
@@ -38,17 +38,20 @@ export default function App() {
             <span className="brand-icon" aria-hidden="true">F<span>Q</span></span>
             FileQuest<span className="brand-dot">.</span>
           </a>
-          <span className="build-label"><span aria-hidden="true" /> LOCAL PROTOTYPE · 02</span>
+          <span className="build-label"><span aria-hidden="true" /> FILE RUSH · LOCAL PLAY</span>
         </header>
 
         <main id="main">
           <section className="intro" aria-labelledby="page-title">
             <p className="eyebrow">YOUR DOWNLOADS FOLDER HAS A NEW QUEST</p>
-            <h1 id="page-title">Less mess.<br /><span>More play.</span></h1>
-            <p className="intro-copy">Turn digital clutter into a clean inventory.<br />An arcade adventure with a useful reward: organized files.</p>
+            <h1 id="page-title">Your mess. <span>Your mission.</span></h1>
+            <p className="intro-copy">Route packets. Build combos. Take home an organized ZIP.</p>
             <p className="privacy"><span aria-hidden="true">◈</span> Built for on-device processing. Your files stay with you.</p>
           </section>
 
+          <FileRush organizer={organizer} />
+
+          <details className="filename-lab"><summary>Explore the filename classifier · rules & previews</summary>
           <div className="workspace">
             <section className="panel preview-panel" aria-labelledby="preview-title">
               <div className="panel-top">
@@ -62,8 +65,6 @@ export default function App() {
                 <button className="primary-button" onClick={loadDemo}>Try filename demo <span aria-hidden="true">↗</span></button>
                 <p className="zone-note">9 sample names · no file contents read</p>
               </div>
-
-              <ZipWorkspace organizer={organizer} />
 
               <form className="filename-form" onSubmit={addFilename}>
                 <label htmlFor="filename">Or test a relative file path</label>
@@ -116,18 +117,19 @@ export default function App() {
 
               <section className="next-panel" aria-labelledby="next-title">
                 <span className="next-marker" aria-hidden="true">↳</span>
-                <p className="eyebrow">NEXT UNLOCK</p>
-                <h2 id="next-title">Your next quest: play.</h2>
+                <p className="eyebrow">REAL WORK, EVERY ROUTE</p>
+                <h2 id="next-title">A useful high score.</h2>
                 <p>ZIP upload → safe inspection → worker sorting → verified downloadable copy.</p>
-                <p className="next-detail">Next: arcade play powered by the same real processing batches.</p>
-                <span className="milestone-tag">COMING IN THE NEXT MILESTONE</span>
+                <p className="next-detail">Each correct game route requests one file. Score arrives only after worker confirmation.</p>
+                <span className="milestone-tag">YOUR ORIGINAL FILES STAY UNTOUCHED</span>
               </section>
             </aside>
           </div>
+          </details>
           <section className="boundaries" aria-label="Prototype scope">
             <span><b>Now</b> Real ZIP input and verified output</span>
             <span><b>Private</b> Files stay on your device</span>
-            <span><b>Next</b> Play to organize</span>
+            <span><b>Play</b> Every correct route copies a real file</span>
           </section>
         </main>
         <footer><span>FILEQUEST / PROMPTWARS × OUTLIER 2026</span><span>A cleaner folder is the high score.</span></footer>

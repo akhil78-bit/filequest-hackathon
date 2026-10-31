@@ -79,6 +79,11 @@ For any inspected job:
 Game integration can call the same small batch request for a pickup and observe
 acknowledgments. `Finish sorting` drains batches without requiring gameplay.
 
+Milestone 3's File Rush uses exactly one file per correct gate action. The
+`PacketRequest` adapter settles only on the matching `BATCH_RESULT`, and the
+organizer hook withholds game-action `PROGRESS` until that ACK. Neither starting
+the game nor its clock starts automatic sorting. See [the game contract](FILE_RUSH.md).
+
 ## Verification and remaining browser work
 
 Vitest tests independently reopen output with `fflate.unzipSync` on bounded,

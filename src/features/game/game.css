@@ -1,0 +1,99 @@
+.rush-layout { display: grid; grid-template-columns: minmax(0, 1.95fr) minmax(300px, 1fr); gap: 22px; align-items: start; }
+.rush-panel { border: 1px solid #354057; border-radius: 16px; background: #151d2c; padding: 24px; min-width: 0; }
+.rush-title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+.rush-title-row .eyebrow { font-size: 9px; margin-bottom: 5px; }
+.rush-title-row h2 { font-size: 35px; font-style: italic; font-weight: 900; letter-spacing: -1.5px; }
+.rush-title-row h2 > span:first-child { color: #cefa72; }
+.rush-version { font: 9px Consolas, monospace; color: #aab4c7; border: 1px solid #3c4d63; padding: 4px; vertical-align: super; margin-left: 10px; letter-spacing: 0; }
+.rush-title-row .pill { font-size: 8px; }
+.rush-hud { display: grid; grid-template-columns: 1.3fr 1fr 1.2fr 1fr; gap: 10px; margin-bottom: 16px; }
+.rush-hud > div { display: grid; gap: 7px; border-left: 1px solid #3d4c64; padding-left: 14px; }
+.rush-hud > div:first-child { border: 0; padding: 0; }
+.rush-hud span { color: #b3bed1; text-transform: uppercase; letter-spacing: 1px; font: 9px Consolas, monospace; }
+.rush-hud strong { font: 25px/1.2 'Cascadia Code', Consolas, monospace; color: #f2f5fb; }
+.rush-hud strong.lime { color: #cefa72; }
+.rush-hud .rush-lives { color: #cefa72; font-size: 19px; letter-spacing: 3px; }
+.rush-hud .rush-lives span { font-size: 19px; letter-spacing: 3px; color: #9ba9c0; }
+.rush-arena { height: 455px; position: relative; isolation: isolate; border: 1px solid #3c4b62; border-radius: 12px; overflow: hidden; background: radial-gradient(ellipse at 50% -20%, #29483590, transparent 60%), #0c121e; }
+.rush-arena::after { content: ''; pointer-events: none; position: absolute; inset: 0; background-image: linear-gradient(#627fbb08 1px, transparent 1px); background-size: 100% 5px; z-index: 4; }
+.arena-topline { position: absolute; left: 17px; right: 17px; top: 17px; display: flex; justify-content: space-between; gap: 10px; font: 8px Consolas, monospace; letter-spacing: 1px; color: #a2b3ca; }
+.arena-topline span:last-child { color: #b8dd97; }
+.lane-tracks { position: absolute; inset: 46px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); }
+.lane-tracks span { border-right: 1px dashed #8dadd625; background: linear-gradient(180deg, transparent, #59728e08); }
+.lane-tracks span:last-child { border-right: 0; }
+.lane-tracks .selected { background: linear-gradient(180deg, #cefa7200 10%, #cefa7212 90%); border-bottom: 3px solid #cefa72; }
+.packet { position: absolute; z-index: 2; width: 158px; max-width: calc(100% - 24px); transform: translateX(-50%); margin-left: 0; padding: 14px 12px 12px; border: 1px solid #d2fb83; border-radius: 9px; background: #253734; box-shadow: 0 0 32px #b4e77520, 0 8px 24px #0005; transition: left 100ms ease-out, top 55ms linear; text-align: center; }
+.packet-icon { display: block; font-size: 30px; color: #cefa72; margin-bottom: 7px; }
+.packet-name { display: block; color: #f0f8df; font: 12px/1.5 Consolas, monospace; overflow-wrap: anywhere; max-height: 54px; overflow: hidden; }
+.packet-kind { display: block; color: #c5d8bf; font: 8px Consolas, monospace; letter-spacing: .4px; margin-top: 8px; overflow-wrap: anywhere; }
+.gate-row { position: absolute; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; padding: 10px; z-index: 3; background: linear-gradient(transparent, #0c121e); }
+.category-gate { border: 1px solid #536782; border-top: 3px solid #8da7ce; border-radius: 7px 7px 3px 3px; background: #1b293d; padding: 10px 3px 7px; color: #dce6f5; min-height: 90px; display: grid; gap: 6px; justify-items: center; font-size: 11px; overflow-wrap: anywhere; }
+.category-gate:disabled { opacity: .65; }
+.category-gate.chosen { color: #e1ffaf; border-color: #cefa72; background: #2b3b2e; box-shadow: 0 -9px 24px #cefa7210; }
+.gate-icon { font-size: 23px; line-height: 1; }
+.category-gate small { font: 9px Consolas, monospace; color: #b0c0d5; }
+.worker-signal { position: absolute; left: 10px; right: 10px; bottom: 115px; text-align: center; font: 9px Consolas, monospace; letter-spacing: .7px; color: #d6f7ac; z-index: 3; background: #101c1eee; padding: 12px 4px; border: 1px solid #8aaf6344; border-radius: 5px; }
+.arena-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #0c131eea; backdrop-filter: blur(3px); z-index: 5; padding: 20px; overflow-y: auto; }
+.overlay-card { text-align: center; max-width: 360px; margin: auto; }
+.overlay-symbol { display: inline-block; color: #cefa72; font: 42px/1 Consolas, monospace; margin-bottom: 15px; }
+.overlay-card .eyebrow { color: #c8dfac; font-size: 9px; margin-bottom: 8px; }
+.overlay-card h3 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -1.2px; }
+.overlay-card p { font-size: 13px; line-height: 1.75; color: #b8c6d9; margin: 15px 0; overflow-wrap: anywhere; }
+.overlay-card p b { color: #d6efb4; font-weight: 600; }
+.overlay-card .primary-button, .overlay-card .secondary-button { margin: 7px 4px; }
+.overlay-card .text-button { display: block; width: 100%; padding: 10px; color: #c5d5b1; }
+.overlay-tip { display: block; font-size: 10px; line-height: 1.8; color: #b1bdd1; margin-top: 13px; }
+.mode-picker { display: flex; gap: 9px; margin: 15px 0 10px; }
+.mode-picker button { flex: 1; border: 1px solid #52637d; background: #1d293d; color: #dce5f5; min-height: 51px; padding: 8px; font-size: 12px; font-weight: 600; }
+.mode-picker button[aria-pressed=true] { border-color: #cefa72; color: #cefa72; background: #29392b; }
+.mode-picker small { display: block; color: #b7c4d6; font-size: 9px; margin-top: 5px; font-weight: 400; }
+.rush-feedback { display: flex; align-items: center; gap: 9px; min-height: 47px; padding: 11px 0; color: #c9dcae; font: 11px/1.65 Consolas, monospace; overflow-wrap: anywhere; }
+.rush-feedback > span { color: #cefa72; font-size: 19px; }
+.rush-controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid #364158; }
+.rush-controls-row p { font-size: 10px; line-height: 2; color: #bdc8db; margin: 0; }
+.rush-controls-row p > span { font-size: 9px; color: #9fadc2; }
+kbd { display: inline-block; font: 10px Consolas, monospace; border: 1px solid #52627a; padding: 1px 5px; border-radius: 4px; margin-right: 3px; color: #e0e7f4; }
+.touch-controls { display: grid; grid-template-columns: 54px 1fr 54px; gap: 10px; margin-top: 15px; }
+.touch-controls button { min-height: 48px; touch-action: manipulation; }
+.game-exit-actions { display: flex; justify-content: space-between; gap: 10px; }
+.game-exit-actions .text-button { font-size: 11px; text-align: left; }
+.rush-inventory { display: grid; gap: 18px; min-width: 0; }
+.mission-panel > h2 { margin-bottom: 18px; }
+.mission-panel .counters dd { font-size: 29px; }
+.mission-panel .category-list { margin-top: 18px; }
+.zip-panel .zip-workspace { margin-top: 0; }
+.zip-panel .zip-heading { padding-top: 0; border: 0; }
+.zip-panel .upload-zone { padding: 13px; }
+.zip-panel .manifest-preview .table-scroll { max-height: 340px; }
+.filename-lab { margin: 24px 0; border: 1px solid #3b485f; border-radius: 10px; padding: 0 18px 18px; }
+.filename-lab:not([open]) { padding-bottom: 0; }
+.filename-lab > summary { min-height: 50px; padding: 15px 0; font-size: 12px; color: #b3c2d7; cursor: pointer; }
+
+@media (max-width: 980px) {
+  .rush-layout { grid-template-columns: minmax(0, 1fr); }
+  .rush-inventory { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .rush-panel { padding: 16px; }
+  .rush-arena { height: 450px; }
+  .rush-title-row { gap: 6px; margin-bottom: 17px; }
+  .rush-title-row h2 { font-size: 29px; }
+  .rush-title-row .pill { font-size: 7px; padding: 5px; }
+  .rush-hud { gap: 5px; }
+  .rush-hud > div { padding-left: 8px; }
+  .rush-hud strong { font-size: 21px; }
+  .rush-hud .rush-lives, .rush-hud .rush-lives span { font-size: 15px; letter-spacing: 1px; }
+  .rush-hud span { font-size: 8px; letter-spacing: .3px; }
+  .rush-inventory { grid-template-columns: minmax(0, 1fr); }
+  .gate-row { padding: 7px; gap: 4px; }
+  .category-gate { font-size: 9px; min-height: 85px; }
+  .arena-overlay { padding: 18px; }
+  .overlay-card h3 { font-size: 30px; }
+  .overlay-card p { font-size: 12px; }
+  .arena-topline { font-size: 7px; left: 10px; right: 10px; }
+  .packet { width: 145px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .packet { transition: none; top: 43% !important; }
+  .rush-arena::after { display: none; }
+}
