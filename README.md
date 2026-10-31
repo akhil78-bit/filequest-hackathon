@@ -1,31 +1,43 @@
-# FileQuest
+# FileQuest: Chaos Run
 
 Turn a messy ZIP snapshot into an arcade quest and an organized downloadable copy.
 Built for PromptWars × OUTLIER 2026.
 
 ## Current milestone
 
-Milestone 3 introduces **File Rush**: steer real file packets to category gates,
-build combos, and download the organized ZIP. **Play synthetic demo** generates
-20 files locally and starts the game; no external upload is required. Or choose
-your own ZIP in the inventory panel and press **Play**.
+Milestone 4 introduces **Chaos Run**: an original neon three-lane endless runner.
+Pilot a hovercraft, dodge crates and shifting hazards, collect energy, shield
+your hull, activate magnets and repair damage. Speed and combo multipliers rise
+as you survive. **Play instant demo** generates 120 synthetic files locally and
+starts a genuine ZIP-organizing quest. Or choose your own ZIP in the inventory
+panel and run with its files.
 
-Every correct route requests exactly **one** file operation. The game waits for
-the matching worker `BATCH_RESULT` before awarding points, advancing the packet or
-updating its processed counters. Wrong routes and timeouts consume a life without
-requesting file work. Slow worker operations freeze the challenge clock.
+Energy pickups earn up to 8 files of sorting credit, survived 10-second waves up
+to 16, and 400-metre milestones up to 24. Real work runs in the organizer worker
+while the runner keeps playing. The scheduler keeps **one batch in flight and
+at most 25 files of pending credit**, with exact-entry batch acknowledgments,
+idempotent request IDs and stale-response protection. File counts never advance
+from the animation, distance or run score: they wait for successful worker ACK.
+Hundreds of files can be processed in a few dozen batches rather than hundreds
+of individual actions. Credits coalesce at the 25-file cap under backpressure.
 
-Use **← / →** or **A / D** to steer, **Space / Enter** to route from the focused
-arena, **1–4** to select a gate, and **P / Escape** to pause/resume. Category gates
-and the large steering/route buttons support touch and native keyboard clicks.
-Focus the arena for its shortcuts. The clock pauses when the window is hidden,
-loses focus, or keyboard focus leaves the game panel.
+Use **← / →** or **A / D** to steer, **1–3** to select a lane, **P / Escape** to
+pause/resume, or swipe horizontally on the arena. Native touch/keyboard buttons
+also steer. Window blur, hidden tabs and keyboard focus leaving the game panel
+pause the runner and new requests; already-earned in-flight work may finish.
 
-**Calm mode** removes time limits and speed bonuses. Reduced-motion preferences
-default to calm and suppress packet movement. Losing all three lives never drops
-a file: continue with new lives, switch to calm, or use **Finish sorting without
-playing**. That explicit alternative drains the remaining worker batches without
-adding game points. Cancel stops processing and discards export.
+**Calm mode** has no wall-clock motion or reaction deadline: select a lane, then
+press **Advance safely** or Space/Enter from the arena. Reduced-motion preferences
+default to calm; reduced effects disable camera motion, particles and cosmetic
+animation. Health reaching zero opens game-over with restart/continue-in-calm
+and explicit Finish controls. Restart resets run stats and keeps processed files,
+pending work and unique event IDs. No archive is restarted or corrupted.
+
+**Finish sorting without playing** explicitly drains remaining batches. Those
+copies are counted separately from game-earned files and do not increase run
+score. Cancel stops processing and discards the incomplete export. Victory appears
+only after verified ZIP completion, with a prominent download and optional
+endless bonus run. Bonus runs earn game points and never request more file work.
 
 Files are classified by extension and copied into category folders. Source CRC32
 and actual decompressed sizes are checked before counting a file as processed.
@@ -86,13 +98,18 @@ npm start
   output paths, categories, statuses, byte sizes and CRC32. Empty directory
   markers are explicitly skipped; empty files are preserved. Empty ZIPs produce
   a manifest-only output. Failure/cancellation never exposes a partial ZIP.
-- `src/features/game/engine.ts` owns testable game state, challenge time, gates,
-  lives, combos and receipt-based scoring. `FileRush.tsx` renders the DOM arena.
-- `packet-request.ts` links a single game action to its exact worker ACK, rejects
-  stale/parallel packets and shares a repeated in-flight request. The organizer
-  hook suppresses per-file progress until that ACK for game actions; only the
-  explicit finish alternative automatically drains file batches. No ZIP core
-  rewrite or new dependency was needed for gameplay.
+- `src/features/game/chaos/model.ts` owns the deterministic fixed-step runner;
+  `RunnerCanvas.tsx` and `render.ts` draw original procedural art without assets.
+  `ChaosRun.tsx` provides responsive HUD, controls, modes and inventory UI.
+- `work-scheduler.ts` coalesces earned work with bounded backpressure.
+  `earned-batch.ts` validates the matching job/request and exact processed entry
+  IDs before releasing a receipt. The organizer hook suppresses per-file
+  `PROGRESS` until the earned batch's `BATCH_RESULT`.
+- The original File Rush modules, packet adapter and tests remain intact as
+  reference coverage. There are no new dependencies. The ZIP algorithm, limits,
+  integrity checks and worker protocol remain stable; only the yield mechanism
+  changes to posted `MessageChannel` tasks, avoiding per-file timer clamping while
+  retaining the same cancellation/budget checks. Ports are closed after each yield.
 
 Enforced ZIP limits: 25 MiB input, 500 files, 1,000 total entries including
 directory markers, 100 MiB total extracted, 20 MiB per file and a 100:1
@@ -118,7 +135,7 @@ contents are. See [the pipeline contract](docs/ZIP_PIPELINE.md).
 
 With a working Python installation, `python scripts/generate_demo_zip.py` creates
 an ignored ZIP containing 24 synthetic files that can now be uploaded. Python is
-not required for the in-browser 20-file demo. See [the test matrix](docs/TEST_MATRIX.md).
+not required for the in-browser demos. See [the test matrix](docs/TEST_MATRIX.md).
 
 Automated tests cover exact-byte/SHA-256 round trips, manifest correctness,
 duplicate names, Unicode, empty inputs, adversarial metadata, runtime extraction
@@ -127,14 +144,25 @@ actual worker entry and run it on a real Node worker thread, verifying buffer
 transfer and the extractable output. This does not substitute for browser UI,
 download, network-privacy or 390px interaction testing.
 
-Game tests cover correct/wrong routes, combo receipts, slow worker behavior,
-pause, calm mode, lost lives, stale/duplicate ACKs, cancellation and explicit
-finish. A full File Rush demo also runs through the bundled worker on a real
-thread, followed by exact-byte ZIP verification. See [File Rush's contract](docs/FILE_RUSH.md).
+Chaos tests cover lanes, collision immunity, shifting hazards, shields/magnets/
+repairs, scoring, particles, modes, pause, restart, bonus play and bounded earned
+work. Integration tests organize 120- and 500-file ZIPs through actual runner
+milestones and verify every exported byte and manifest. Additional tests check
+cancellation, corrupt inputs, assisted completion and real worker-thread messaging.
+See [the Chaos Run contract](docs/CHAOS_RUN.md) and the retained
+[File Rush contract](docs/FILE_RUSH.md).
 
 The supplied Dockerfile and [Cloud Run instructions](docs/DEPLOY_CLOUD_RUN.md)
 are retained. No deployment has been performed and no live URL is claimed.
 Cloud Run will host static assets; private file processing stays in the browser.
+
+Deployment preparation now includes an explicit `.gcloudignore` source allowlist,
+Docker-context secret exclusions and HTTP regression tests for port binding,
+health/HEAD, SPA fallback, missing assets, MIME/cache/security headers and rejected
+upload methods. The server fails startup without its production index. See the
+Cloud Run playbook for exact PowerShell deployment commands and the release
+verification checklist. Google Cloud project/region are not configured here;
+Docker image execution and live browser verification remain outstanding.
 
 Before an approved commit or push, run `python scripts/check_submission.py` and
 verify public GitHub visibility, exactly one remote branch (`main`), and Git

@@ -84,6 +84,15 @@ Milestone 3's File Rush uses exactly one file per correct gate action. The
 organizer hook withholds game-action `PROGRESS` until that ACK. Neither starting
 the game nor its clock starts automatic sorting. See [the game contract](FILE_RUSH.md).
 
+Chaos Run now extends this with multi-file earned batches: energy, survived waves
+and distance milestones grant bounded credit, coalesced with one request active
+and at most 25 files pending. `EarnedBatch` verifies the exact acknowledged entries;
+the hook withholds `PROGRESS` until `BATCH_RESULT`. Restart preserves the archive;
+explicit finish is shown separately from earned copies. All validation, budgets
+and cancellation checks remain. Yield points now post short-lived MessageChannel
+tasks to avoid nested-timer clamping while preserving worker responsiveness.
+See [Chaos Run](CHAOS_RUN.md).
+
 ## Verification and remaining browser work
 
 Vitest tests independently reopen output with `fflate.unzipSync` on bounded,

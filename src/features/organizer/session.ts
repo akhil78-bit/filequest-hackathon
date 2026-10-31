@@ -8,7 +8,14 @@ export class CancelledError extends Error {
   constructor() { super('Sorting cancelled. No partial ZIP is available.'); this.name = 'CancelledError'; }
 }
 
-const yieldTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+// A posted task yields to worker messages without nested-timer clamping per file.
+// Close both ports after every yield so Node tests and idle workers retain no handles.
+const yieldTask = () => new Promise<void>((resolve) => {
+  if (typeof MessageChannel === 'undefined') { setTimeout(resolve, 0); return; }
+  const channel = new MessageChannel();
+  channel.port1.onmessage = () => { channel.port1.close(); channel.port2.close(); resolve(); };
+  channel.port2.postMessage(null);
+});
 const fixedDate = () => new Date(2020, 0, 1);
 
 /** One transaction. A failed/cancelled archive is never offered for download. */

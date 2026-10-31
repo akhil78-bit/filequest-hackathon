@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('./dist/', import.meta.url)));
 const port = Number.parseInt(process.env.PORT || '8080', 10);
+// Do not pass a Cloud Run startup probe when the production build is absent.
+try {
+  if (!(await stat(join(root, 'index.html'))).isFile()) throw new Error('Missing index');
+  await readFile(join(root, 'index.html'));
+} catch {
+  console.error('FileQuest production index is missing or unreadable. Run npm run build before starting.');
+  process.exit(1);
+}
 const mime = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -45,7 +53,8 @@ createServer(async (req, res) => {
   if (!withinRoot(target)) { res.writeHead(403); res.end('Forbidden'); return; }
   let file;
   try { const s = await stat(target); if (s.isFile()) file = target; } catch { /* missing */ }
-  if (!file && (path === '/' || !extname(path))) file = join(root, 'index.html');
+  const assetPath = path === '/assets' || path.startsWith('/assets/');
+  if (!file && !assetPath && (path === '/' || !extname(path))) file = join(root, 'index.html');
   if (!file) { res.writeHead(404); res.end('Not found'); return; }
   try {
     const body = await readFile(file);

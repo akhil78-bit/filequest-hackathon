@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { CATEGORIES, planFiles } from './features/organizer/classify';
 import { DEMO_PATHS } from './features/organizer/demo';
 import { useOrganizer } from './features/organizer/useOrganizer';
-import { FileRush } from './features/game/FileRush';
+import { ChaosRun } from './features/game/chaos/ChaosRun';
 
 export default function App() {
   const organizer = useOrganizer();
@@ -38,18 +38,18 @@ export default function App() {
             <span className="brand-icon" aria-hidden="true">F<span>Q</span></span>
             FileQuest<span className="brand-dot">.</span>
           </a>
-          <span className="build-label"><span aria-hidden="true" /> FILE RUSH · LOCAL PLAY</span>
+          <span className="build-label"><span aria-hidden="true" /> CHAOS RUN / FILES STAY LOCAL</span>
         </header>
 
         <main id="main">
           <section className="intro" aria-labelledby="page-title">
-            <p className="eyebrow">YOUR DOWNLOADS FOLDER HAS A NEW QUEST</p>
-            <h1 id="page-title">Your mess. <span>Your mission.</span></h1>
-            <p className="intro-copy">Route packets. Build combos. Take home an organized ZIP.</p>
+            <p className="eyebrow">A HIGH SCORE YOU CAN TAKE HOME</p>
+            <h1 id="page-title">Outrun the mess. <span>Keep the loot.</span></h1>
+            <p className="intro-copy">An arcade run. A cleaner inventory. Your actual files, organized.</p>
             <p className="privacy"><span aria-hidden="true">◈</span> Built for on-device processing. Your files stay with you.</p>
           </section>
 
-          <FileRush organizer={organizer} />
+          <ChaosRun organizer={organizer} />
 
           <details className="filename-lab"><summary>Explore the filename classifier · rules & previews</summary>
           <div className="workspace">
@@ -117,10 +117,10 @@ export default function App() {
 
               <section className="next-panel" aria-labelledby="next-title">
                 <span className="next-marker" aria-hidden="true">↳</span>
-                <p className="eyebrow">REAL WORK, EVERY ROUTE</p>
+                <p className="eyebrow">REAL WORK, EVERY RUN</p>
                 <h2 id="next-title">A useful high score.</h2>
                 <p>ZIP upload → safe inspection → worker sorting → verified downloadable copy.</p>
-                <p className="next-detail">Each correct game route requests one file. Score arrives only after worker confirmation.</p>
+                <p className="next-detail">Energy, waves and distance milestones earn bounded sorting batches. File counts arrive only after worker confirmation.</p>
                 <span className="milestone-tag">YOUR ORIGINAL FILES STAY UNTOUCHED</span>
               </section>
             </aside>
@@ -129,7 +129,7 @@ export default function App() {
           <section className="boundaries" aria-label="Prototype scope">
             <span><b>Now</b> Real ZIP input and verified output</span>
             <span><b>Private</b> Files stay on your device</span>
-            <span><b>Play</b> Every correct route copies a real file</span>
+            <span><b>Play</b> Energy & survival earn real sorting work</span>
           </section>
         </main>
         <footer><span>FILEQUEST / PROMPTWARS × OUTLIER 2026</span><span>A cleaner folder is the high score.</span></footer>

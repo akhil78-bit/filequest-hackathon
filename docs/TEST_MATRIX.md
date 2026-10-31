@@ -50,3 +50,21 @@ public Cloud Run and final GitHub checks are not part of Milestone 2 verificatio
 Browser connector unavailable; native Edge control not approved. Browser gameplay,
 390px/touch, keyboard focus, reduced-motion appearance and Blob download remain
 unverified. No Cloud Run deployment or final GitHub visibility check was performed.
+
+## Milestone 4 — Chaos Run
+
+- `tests/game/chaos-model.test.ts`: lane motion, collision immunity, power-ups,
+  changing hazards, bounded entities/particles, speed/scoring, pause/resume, calm,
+  restart with unique event IDs, terminal states and bonus play without file work.
+- `tests/game/chaos-work.test.ts`: bounded one-active/25-pending-credit scheduler,
+  exact worker receipts, duplicate/stale protection, pause, cancel, reset, assisted
+  finish attribution, completion and failure handling.
+- `tests/game/chaos-integration.test.ts`: runner-driven 120-/500-file ZIP round
+  trips, content/manifest integrity, no start-only processing, restart in flight,
+  cancellation, corrupt file failure and explicit finish without earned inflation.
+- `tests/organizer/thread.test.ts`: Chaos runner/scheduler/adapter over actual
+  bundled worker messages, then byte-exact ZIP extraction verification.
+
+Existing organizer, File Rush and deployment server regressions remain in the
+suite. Manual Canvas/mobile/keyboard/swipe/reduced-motion/Blob download and live
+Cloud Run verification remain outstanding; see `docs/CHAOS_RUN.md`.

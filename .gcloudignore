@@ -1,0 +1,39 @@
+# Upload only the files needed to build and test the static application.
+# This controls source upload; .dockerignore controls the Docker build context.
+*
+!/.gcloudignore
+!/.dockerignore
+!/Dockerfile
+!/server.mjs
+!/package.json
+!/package-lock.json
+!/index.html
+!/tsconfig.json
+!/vite.config.ts
+!/eslint.config.js
+!/src/
+!/src/**
+!/tests/
+!/tests/**
+!/public/
+!/public/**
+
+# Re-exclude private/local artifacts even inside an included source directory.
+**/.env
+**/.env.*
+**/*.local
+**/*.log
+**/*.key
+**/*.pem
+**/*service-account*.json
+**/*credentials*.json
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.mp4
+**/*.mov
+**/*.webm
+**/node_modules/
+**/.cache/
+**/.gcloud/
+**/.aws/

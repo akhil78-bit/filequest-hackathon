@@ -7,6 +7,10 @@ import { createDemoZip } from '../../src/features/organizer/demo-zip';
 import type { WorkerRequest, WorkerResponse } from '../../src/features/organizer/protocol';
 import { PacketRequest } from '../../src/features/organizer/packet-request';
 import { FileRushEngine } from '../../src/features/game/engine';
+import { EarnedBatch } from '../../src/features/organizer/earned-batch';
+import { WorkScheduler } from '../../src/features/game/chaos/work-scheduler';
+import { ChaosEngine } from '../../src/features/game/chaos/model';
+import { createChaosDemo } from '../../src/features/game/chaos/demo';
 
 let code: string;
 const threads: Worker[] = [];
@@ -54,6 +58,38 @@ function thread() {
 }
 
 describe('actual worker thread transport', () => {
+  it('collects energy and survives waves to organize a Chaos Run ZIP over actual thread messaging', async () => {
+    const { worker, waitFor, post, messages } = thread();
+    const adapter = new EarnedBatch(), source = createChaosDemo(40), original = unzipSync(source);
+    const ready = waitFor('READY'); post({ type: 'INIT', jobId: 'chaos-thread', buffer: source.buffer });
+    const initial = await ready;
+    if (initial.type !== 'READY') throw new Error('Missing Chaos manifest');
+    let manifest = initial.manifest;
+    worker.on('message', (message: WorkerResponse) => {
+      if ('manifest' in message && message.manifest) manifest = message.manifest;
+      adapter.receive(message);
+      if (message.type === 'ERROR') adapter.abort(message.message);
+    });
+    const work = new WorkScheduler((count, eventId) => adapter.request('chaos-thread', eventId, count, manifest, post));
+    const engine = new ChaosEngine((event) => work.grant(event.id, event.files));
+    engine.subscribe(() => { if (engine.getSnapshot().phase === 'playing') work.resume(); else work.pause(); });
+    engine.start('rush');
+    const complete = waitFor('COMPLETE');
+    for (let frame = 0; frame < 2000 && !messages.some((message) => message.type === 'COMPLETE'); frame++) {
+      if (engine.getSnapshot().phase === 'gameover') engine.start('rush');
+      engine.advance(100);
+      if (work.getSnapshot().error) throw new Error(work.getSnapshot().error);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    const result = await complete;
+    if (result.type !== 'COMPLETE') throw new Error('Missing Chaos output');
+    const output = unzipSync(new Uint8Array(result.buffer));
+    for (const entry of result.manifest.entries) expect(output[entry.outputPath!]).toEqual(original[entry.originalPath]);
+    expect(result.manifest.progress).toMatchObject({ processed: 40, remaining: 0, failed: 0 });
+    expect(work.getSnapshot().earned).toBe(40);
+    expect(work.getSnapshot().batches).toBeLessThan(20);
+    await worker.terminate();
+  }, 15000);
   it('plays a whole File Rush demo through real one-file worker requests and byte-exact export', async () => {
     const { worker, waitFor, post } = thread();
     const packets = new PacketRequest();

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Manifest, Phase, WorkerRequest, WorkerResponse } from './protocol';
 import { ZIP_LIMITS } from './zip-format';
 import { PacketRequest } from './packet-request';
+import { EarnedBatch } from './earned-batch';
 
 interface State {
   jobId: string;
@@ -13,6 +14,7 @@ interface State {
   batchBusy: boolean;
 }
 interface Job {
+  earnedBatch: EarnedBatch;
   packet: PacketRequest;
   id: string;
   worker: Worker;
@@ -31,7 +33,7 @@ export function useOrganizer() {
   const dispose = useCallback(() => {
     const job = current.current;
     current.current = null;
-    if (job) { job.packet.abort('The archive was replaced or reset.'); job.worker.terminate(); if (job.url) URL.revokeObjectURL(job.url); }
+    if (job) { job.packet.abort('The archive was replaced or reset.'); job.earnedBatch.abort('The archive was replaced or reset.'); job.worker.terminate(); if (job.url) URL.revokeObjectURL(job.url); }
   }, []);
   useEffect(() => dispose, [dispose]);
 
@@ -53,6 +55,7 @@ export function useOrganizer() {
     let job: Job;
     try {
       job = {
+        earnedBatch: new EarnedBatch(),
         packet: new PacketRequest(),
         id: crypto.randomUUID(), worker: new Worker(new URL('./organizer.worker.ts', import.meta.url), { type: 'module' }),
         sequence: 0, busy: false, finish: false, phase: 'reading', manifest: null, url: null,
@@ -66,6 +69,7 @@ export function useOrganizer() {
     const fail = (error: string) => {
       if (current.current !== job) return;
       job.packet.abort(error);
+      job.earnedBatch.abort(error);
       job.phase = 'error'; job.worker.terminate(); job.busy = false;
       setState((previous) => ({ ...previous, phase: 'error', error, batchBusy: false, downloadUrl: null }));
     };
@@ -81,7 +85,7 @@ export function useOrganizer() {
       }
       if (message.type === 'PROGRESS') {
         // A game action stays unscored/unprocessed in the UI until its BATCH_RESULT.
-        if (job.packet.active) return;
+        if (job.packet.active || job.earnedBatch.active) return;
         if (!job.manifest) return;
         const updated = {
           ...job.manifest, progress: message.progress,
@@ -97,6 +101,7 @@ export function useOrganizer() {
       job.phase = message.manifest.progress.phase;
       if (message.type === 'BATCH_RESULT' || message.type === 'CANCEL') job.busy = false;
       if (message.type === 'BATCH_RESULT') job.packet.receive(message);
+      if (message.type === 'BATCH_RESULT') job.earnedBatch.receive(message);
       if (message.type === 'COMPLETE') {
         try { job.url = URL.createObjectURL(new Blob([message.buffer], { type: 'application/zip' })); }
         catch { fail('The download could not be prepared. Try a smaller ZIP or free some browser memory.'); return; }
@@ -124,6 +129,7 @@ export function useOrganizer() {
     if (!job || ['complete', 'cancelled', 'error'].includes(job.phase)) return;
     job.finish = false;
     job.packet.abort('Sorting cancelled.');
+    job.earnedBatch.abort('Sorting cancelled.');
     if (job.phase === 'reading') {
       job.phase = 'cancelled'; job.worker.terminate();
       setState((previous) => ({ ...previous, phase: 'cancelled', batchBusy: false }));
@@ -146,11 +152,23 @@ export function useOrganizer() {
     });
   }, []);
 
+  const requestEarnedBatch = useCallback((count: number, eventId: number) => {
+    const job = current.current;
+    if (!job?.manifest || job.finish || !['ready', 'processing'].includes(job.phase)) return Promise.reject(new Error('Archive unavailable for earned work.'));
+    if (job.busy && !job.earnedBatch.active) return Promise.reject(new Error('Another batch is processing.'));
+    return job.earnedBatch.request(job.id, eventId, count, job.manifest, (request) => {
+      job.busy = true;
+      setState((previous) => ({ ...previous, batchBusy: true, phase: 'processing' }));
+      job.worker.postMessage(request);
+    });
+  }, []);
+
   return {
     ...state,
     load,
     cancel,
     requestPacket,
+    requestEarnedBatch,
     sortNextBatch: () => { const job = current.current; if (job) batch(job, 5); },
     finishSorting: () => { const job = current.current; if (job) { job.finish = true; batch(job, 25); } },
     reset: () => { dispose(); setState(initial); },
