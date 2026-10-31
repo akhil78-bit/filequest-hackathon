@@ -2,7 +2,7 @@
 import type { KeyboardEvent, PointerEvent } from 'react';
 import { ZipWorkspace } from '../../../components/ZipWorkspace';
 import type { Organizer } from '../../../components/ZipWorkspace';
-import { CATEGORIES } from '../../organizer/classify';
+import { InventorySummary } from './InventorySummary';
 import { ChaosEngine, multiplier } from './model';
 import type { RunMode } from './model';
 import { WorkScheduler } from './work-scheduler';
@@ -120,10 +120,6 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
   const incoming = game.entities.filter((entity) => !entity.resolved && entity.z > .15 && entity.z < .86).sort((a, b) => b.z - a.z).slice(0, 3);
   const score = Math.floor(game.score);
   const uploadLocked = active || ['reading', 'packaging', 'cancelling'].includes(organizer.phase) || organizer.batchBusy;
-  const totalFiles = progress ? progress.total - progress.skipped : 0;
-  const percent = totalFiles ? Math.floor((progress!.processed / totalFiles) * 100) : 0;
-  const completed = organizer.phase === 'complete' && Boolean(organizer.downloadUrl);
-  const categoryCounts = CATEGORIES.map((category) => ({ category, count: organizer.manifest?.entries.filter((entry) => entry.category === category && entry.status === 'processed').length ?? 0 }));
 
   return <>
     <section className="intro" aria-labelledby="page-title">
@@ -171,15 +167,7 @@ export function ChaosRun({ organizer }: { organizer: Organizer }) {
         <div className="chaos-bottom"><label><input type="checkbox" checked={reduced} onChange={(event) => setReduced(event.target.checked)} /> Reduced effects</label>{readyForFinish && <button className="text-button" onClick={finish}>Finish without playing <Icon name="arrow" size={16} /></button>}{active && <button className="text-button cancel-button" onClick={cancel}>Cancel quest</button>}</div>
       </section>
       <aside className="chaos-inventory" aria-label="Actual file organization">
-        <section className={`panel chaos-mission ${completed ? 'mission-complete' : ''}`} aria-labelledby="inventory-title"><div className="mission-top"><p className="eyebrow">REAL WORK. REAL REWARD.</p><span className={`worker-indicator ${organizer.batchBusy ? 'busy' : ''}`}><span className="status-dot" />{completed ? 'Verified' : organizer.batchBusy ? 'Processing' : 'On-device'}</span></div><h2 id="inventory-title">Your inventory</h2><p className="mission-description">{completed ? 'A clean copy, ready to take with you.' : progress ? 'Every counted file has been copied and checked.' : 'A little play. An actually organized archive.'}</p>
-          <div className="progress-heading"><div className="actual-total"><strong>{progress?.processed ?? 0}<small> / {totalFiles}</small></strong><span>FILES VERIFIED & COPIED</span></div><span className="progress-percent">{percent}<small>%</small><span>files copied</span></span></div>
-          <progress aria-label="Actual file organization progress" value={progress?.processed ?? 0} max={Math.max(1, totalFiles)} />
-          <dl className="chaos-counts"><div><dt>Remaining</dt><dd>{progress?.remaining ?? 0}</dd></div><div><dt>Skipped</dt><dd>{progress?.skipped ?? 0}</dd></div><div className={(progress?.failed ?? 0) > 0 ? 'has-failures' : ''}><dt>Failed</dt><dd>{progress?.failed ?? 0}</dd></div></dl>
-          <div className="earned-counts"><span><Icon name="bolt" size={16} /> Game-earned <b>{job.earned}</b></span><span><Icon name="check" size={16} /> Finish / other <b>{Math.max(0, (progress?.processed ?? 0) - job.earned)}</b></span></div>
-          <p className="ack-feedback" role="status" aria-live="polite">{completed ? 'All file bytes checked. Your download is ready.' : organizer.phase === 'error' ? 'Processing stopped. No partial download is available.' : organizer.phase === 'cancelled' ? 'Quest cancelled. Original files remain untouched.' : organizer.phase === 'packaging' || game.phase === 'finishing' ? 'Finalizing the export. Download appears after verification.' : job.busy ? 'Verifying earned files. Counts update after confirmation.' : job.batches ? `${job.lastFiles} files verified in the last batch. ${job.batches} earned batches complete.` : 'Energy pickups and survived waves unlock sorting batches.'}{job.credit ? ` Up to ${job.credit} files of earned credit waiting.` : ''}</p>
-          <div className="category-heading"><h3>Organized destinations</h3><span>{categoryCounts.filter(({ count }) => count > 0).length} / {CATEGORIES.length} categories</span></div><div className="category-list" aria-label="Successfully processed files by category">{categoryCounts.map(({ category, count }) => <div key={category} className={`category-row ${count ? 'category-populated' : ''}`}><Icon name="folder" size={17} /><span>{category}</span><b>{count}</b></div>)}</div>
-          <p className="inventory-footnote"><Icon name="shield" size={15} /> File counts come from verified copies, never the game timer.</p>
-        </section>
+        <InventorySummary organizer={organizer} work={job} finishing={game.phase === 'finishing'} />
         <section className="panel chaos-zip"><InventoryControls organizer={organizer} gameActive={active} onFinish={finish} onCancel={cancel} uploadInputRef={uploadInput} /></section>
       </aside>
     </div>

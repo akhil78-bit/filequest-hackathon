@@ -3,11 +3,18 @@ import type { DragEvent, Ref } from 'react';
 import { createDemoZip } from '../features/organizer/demo-zip';
 import type { useOrganizer } from '../features/organizer/useOrganizer';
 import { Icon } from './Icon';
+import { ManifestPreview } from './ManifestPreview';
 
 export type Organizer = ReturnType<typeof useOrganizer>;
-export function ZipWorkspace({ organizer, gameActive = false, onFinish, onCancel, uploadInputRef }: {
-  organizer: Organizer; gameActive?: boolean; onFinish?: () => void; onCancel?: () => void; uploadInputRef?: Ref<HTMLInputElement>;
-}) {
+interface ZipWorkspaceProps {
+  organizer: Organizer;
+  gameActive?: boolean;
+  onFinish?: () => void;
+  onCancel?: () => void;
+  uploadInputRef?: Ref<HTMLInputElement>;
+}
+
+export function ZipWorkspace({ organizer, gameActive = false, onFinish, onCancel, uploadInputRef }: ZipWorkspaceProps) {
   const [dragging, setDragging] = useState(false);
   const active = gameActive || ['reading', 'packaging', 'cancelling'].includes(organizer.phase) || organizer.batchBusy;
   const ready = organizer.phase === 'ready' || organizer.phase === 'processing';
@@ -58,19 +65,7 @@ export function ZipWorkspace({ organizer, gameActive = false, onFinish, onCancel
         {(['reading', 'ready', 'processing', 'packaging', 'cancelling'].includes(organizer.phase)) && <button className="text-button" disabled={organizer.phase === 'cancelling'} onClick={onCancel ?? organizer.cancel}>Cancel sorting</button>}
       </div>
       {complete && organizer.downloadUrl && <div className="export-ready"><span className="export-check"><Icon name="check" size={22} /></span><div><strong>Order, restored.</strong><p>{progress?.processed ?? 0} files organized. Manifest included.</p></div><a className="primary-button download-button" href={organizer.downloadUrl} download="filequest-organized.zip"><Icon name="download" /> Download ZIP</a><button className="text-button" onClick={organizer.reset}>Organize another archive <Icon name="arrow" size={16} /></button></div>}
-      {organizer.manifest && <details className="manifest-preview" open={complete}>
-        <summary><Icon name="file" size={17} /> View file manifest <span>{organizer.manifest.entries.length}</span></summary>
-        <p className="helper">Original paths, new destinations and actual status. The completed ZIP includes filequest-manifest.json. Failed or cancelled jobs have no partial download.</p>
-        <div className="table-scroll" role="region" aria-label="Archive manifest" tabIndex={0}>
-          <table><caption className="sr-only">Original paths, output paths, categories and actual processing status.</caption>
-            <thead><tr><th scope="col">Original file</th><th scope="col">Destination / status</th></tr></thead>
-            <tbody>{organizer.manifest.entries.map((entry) => <tr key={entry.id}>
-              <td>{entry.originalPath}<small>{entry.bytes.toLocaleString()} bytes · CRC32 {entry.crc32}</small></td>
-              <td><span className="destination">{entry.outputPath ?? 'No output path'}</span><small className={`entry-status entry-${entry.status}`}>{entry.category ?? 'Directory'} · {entry.status}</small><small>{entry.reason}</small></td>
-            </tr>)}</tbody>
-          </table>
-        </div>
-      </details>}
+      {organizer.manifest && <ManifestPreview manifest={organizer.manifest} complete={complete} />}
     </section>
   );
 }
